@@ -1,0 +1,76 @@
+{
+  "eval_family_ids": [
+    "eval_adversarial-fam0",
+    "eval_comp_ood-fam0",
+    "eval_comp_ood-fam1",
+    "eval_id-fam0",
+    "eval_id-fam1",
+    "eval_id-fam2",
+    "eval_rule_ood-fam0",
+    "eval_rule_ood-fam1",
+    "eval_template_ood-fam0",
+    "eval_template_ood-fam1"
+  ],
+  "manifest_fingerprint": "sha256:3cdcbc30c99e492c45e126cd22feb903219b264f50cbd004ab01b734bd83b3b0",
+  "seed": 42,
+  "suites": {
+    "eval_adversarial": {
+      "episodes": 300,
+      "families": 1,
+      "fingerprint": "sha256:c73dd155acd069292b28be73791061ccfd67b5768b396e191cf2ab9ef5187841",
+      "path": "data/eval_suites/eval_adversarial.jsonl",
+      "rule_primitives": [
+        "movement",
+        "capacity",
+        "deposit"
+      ]
+    },
+    "eval_comp_ood": {
+      "episodes": 300,
+      "families": 2,
+      "fingerprint": "sha256:444191a244dcd77d1ae87b905b23d1c13e789afbbbf2a0e22da795e09677dccb",
+      "path": "data/eval_suites/eval_comp_ood.jsonl",
+      "rule_primitives": [
+        "movement",
+        "collection",
+        "capacity",
+        "deposit"
+      ]
+    },
+    "eval_id": {
+      "episodes": 300,
+      "families": 3,
+      "fingerprint": "sha256:aceeea727d2b9eaede3c8a414d7ac0fb45254e5ca12bfbf5e9f052cfc00c52c1",
+      "path": "data/eval_suites/eval_id.jsonl",
+      "rule_primitives": [
+        "movement",
+        "collection",
+        "deposit"
+      ]
+    },
+    "eval_rule_ood": {
+      "episodes": 300,
+      "families": 2,
+      "fingerprint": "sha256:d73745108f5e7e2074dba725de2a689e73154e47e5cf6f219b8448017e57b402",
+      "path": "data/eval_suites/eval_rule_ood.jsonl",
+      "rule_primitives": [
+        "movement",
+        "energy_budget",
+        "collection",
+        "capacity",
+        "deposit"
+      ]
+    },
+    "eval_template_ood": {
+      "episodes": 300,
+      "families": 2,
+      "fingerprint": "sha256:13580a6cbf7a4e5663d2e3f2404af1d21eaf89916a72494f17062eef9184a77e",
+      "path": "data/eval_suites/eval_template_ood.jsonl",
+      "rule_primitives": [
+        "movement",
+        "collection",
+        "deposit"
+      ]
+    }
+  }
+}
