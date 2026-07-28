@@ -1,0 +1,4 @@
+# OPTIONAL — dedicated generation session ONLY (never alongside training).
+# Validate Blackwell (sm_120) compatibility on the actual Colab G4 runtime
+# before freezing an exact pin.
+vllm>=0.10,<1.0

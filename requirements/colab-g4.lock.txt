@@ -1,0 +1,26 @@
+# Axiom-World — Colab G4 training-session lock (protocol §3)
+#
+# The Colab G4 image OWNS the ABI-critical layer. NEVER reinstall from here:
+#   torch / torchvision / torchaudio / triton / nvidia-* CUDA wheels
+#
+# Colab-image versions below are pinned to match the audited runtime.
+transformers==5.13.1
+accelerate==1.14.0
+datasets==4.0.0
+peft==0.19.1
+tokenizers==0.22.2
+safetensors==0.8.0
+huggingface_hub==1.23.0
+
+# TRL: install 1.9.x, then FREEZE the exact pin after Gate G1 passes:
+#   python scripts/smoke_gate_g1.py
+trl>=1.9,<2.0
+
+# Project-owned layer
+pydantic==2.13.4
+PyYAML==6.0.3
+orjson==3.11.9
+wandb==0.28.0
+psutil==5.9.5
+rich==13.9.4
+tqdm==4.67.3

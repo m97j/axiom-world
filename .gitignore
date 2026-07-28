@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+runs/
+outputs/
+data/eval_suites/*.jsonl
+wandb/
+_local/
+.env

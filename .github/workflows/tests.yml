@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install (contract layer only — no torch/TRL in CI)
+        run: |
+          pip install -e ".[dev]"
+      - name: Unit + integration contract tests
+        run: pytest tests -q
+      - name: TRL import-gate contract (must fail cleanly without TRL)
+        run: python scripts/smoke_gate_g1.py --contract-only || test $? -eq 1
+      - name: Eval-suite generation determinism
+        run: |
+          python scripts/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/a
+          python scripts/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/b
+          diff <(jq -r .manifest_fingerprint /tmp/a/freeze_manifest.json) \
+               <(jq -r .manifest_fingerprint /tmp/b/freeze_manifest.json)

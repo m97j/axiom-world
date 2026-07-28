@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axiom-world"
+version = "0.1.0"
+description = "Verifier-guided two-stage post-training framework — core contract layer"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.10,<3",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff==0.16.0"]
+
+[project.scripts]
+axiom = "axiom_world.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "C4", "SIM", "PL"]
+ignore = [
+    "PLC0415",  # Allow lazy-init
+    "PLR0913",  # Allow many arguments
+    "PLR0917",
+    "PLR2004",  # Allow magic number
+    "SIM108",
+    "B008",
+    "E501",     # Allow long code per line
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/axiom_world/runtime/audit.py" = ["BLE001", "S110"]
+"src/axiom_world/core/schemas.py" = ["SIM102"]

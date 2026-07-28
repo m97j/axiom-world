@@ -1,0 +1,30 @@
+# Track B — B4: P1 champion -> PlayWorld SFT (protocol §5.1)
+# Lineage is REQUIRED: this recipe will not validate without a parent adapter.
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: b4-playworld-sft-from-p1
+track: track_b_two_stage
+phase: phase2_playworld
+objective: sft
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  parent_run_id: null   # override with the P1 champion run id
+  parent_adapter:
+    repo_id: REPLACE/axiom-qwen3-8b-p1-general-lora
+    revision: REPLACE_WITH_EXACT_COMMIT_HASH
+    sha256: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+data:
+  source:
+    repo_id: null
+    split: train
+
+training:
+  learning_rate: 1.0e-5
+  num_train_epochs: 2.0
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8

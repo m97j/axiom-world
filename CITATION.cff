@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this framework, please cite it as below."
+title: "Axiom-World: Verifier-Guided Two-Stage Post-Training for Rule-Constrained Game-World Interaction"
+authors:
+  - family-names: "Kim"
+    given-names: "Minjae"
+version: 0.1.0
+date-released: 2026-07-23
+url: "https://github.com/m97j/axiom-world"

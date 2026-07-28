@@ -1,0 +1,24 @@
+# Track A — A1: Base -> PlayWorld SFT (protocol §5.1)
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: a1-playworld-sft
+track: track_a_direct
+phase: phase2_playworld
+objective: sft
+
+lineage:
+  initialization_mode: from_base
+
+data:
+  source:
+    repo_id: null   # override at launch: data.source.repo_id=<id>
+    split: train
+
+training:
+  learning_rate: 1.0e-5
+  num_train_epochs: 2.0
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8

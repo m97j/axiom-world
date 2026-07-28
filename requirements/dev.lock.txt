@@ -1,0 +1,5 @@
+# Contract-level development environment (CPU; used by CI)
+pydantic>=2.10,<3
+PyYAML>=6.0
+pytest>=8
+ruff>=0.9

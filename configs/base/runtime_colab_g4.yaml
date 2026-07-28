@@ -1,0 +1,8 @@
+runtime:
+  seed: 42
+  device: cuda
+  precision: bf16
+  attention_backend: sdpa
+  environment_policy: strict
+  expected_gpu_name_substring: RTX PRO 6000 Blackwell
+  expected_min_vram_gb: 90.0

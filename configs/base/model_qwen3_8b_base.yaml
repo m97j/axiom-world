@@ -1,0 +1,20 @@
+model:
+  repo_id: Qwen/Qwen3-8B-Base
+  # Replace with the exact commit hash at first download (protocol §4.1).
+  # 'main' is rejected by strict canonical validation on purpose.
+  revision: REPLACE_WITH_EXACT_COMMIT_HASH
+  max_seq_length: 4096
+
+adapter:
+  kind: lora
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
