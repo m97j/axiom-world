@@ -6,15 +6,20 @@
 # Colab-image versions below are pinned to match the audited runtime.
 transformers==5.13.1
 accelerate==1.14.0
-datasets==4.0.0
 peft==0.19.1
 tokenizers==0.22.2
 safetensors==0.8.0
 huggingface_hub==1.23.0
 
+
 # TRL: install 1.9.x, then FREEZE the exact pin after Gate G1 passes:
 #   python scripts/smoke_gate_g1.py
-trl>=1.9,<2.0
+trl==1.9.0  # FROZEN at Gate G1 (2026-07-23, Colab G4, Blackwell)
+
+# bump datasets 4.0.0->5.0.0, pin torchao==0.17.0 
+# — resolves trl/datasets, peft/torchao incompatibility surfaced by G1 runtime audit on Colab G4
+datasets==5.0.0
+torchao==0.17.0    
 
 # Project-owned layer
 pydantic==2.13.4
