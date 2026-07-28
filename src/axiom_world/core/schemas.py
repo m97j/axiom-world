@@ -172,7 +172,6 @@ class ExperimentConfig(StrictModel):
                 "parent_adapter is set but initialization_mode is from_base; "
                 "ambiguous lineage is forbidden."
             )
-
         if self.phase is Phase.PHASE2_PLAYWORLD and self.track is Track.B_TWO_STAGE:
             if self.lineage.initialization_mode is not InitializationMode.CONTINUE_PARENT_ADAPTER:
                 violations.append(

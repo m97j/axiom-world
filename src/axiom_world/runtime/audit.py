@@ -7,15 +7,12 @@ torch is imported lazily so the core package works on CPU-only machines
 """
 from __future__ import annotations
 
-import logging
 import platform
 import sys
 from typing import Any
 
 from axiom_world.core.errors import EnvironmentError_
 from axiom_world.core.schemas import RuntimeConfig
-
-logger = logging.getLogger()
 
 _AUDIT_PACKAGES = (
     "torch",
@@ -34,8 +31,8 @@ _AUDIT_PACKAGES = (
 def _package_version(name: str) -> str | None:
     try:
         module = __import__(name)
-    except Exception as exc:
-        logger.debug("runtime audit failed: %s", exc)
+    except Exception:
+        return None
     return getattr(module, "__version__", "unknown")
 
 
