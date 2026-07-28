@@ -1,0 +1,24 @@
+# Track B — B1: Base -> Phase-1 general SFT (protocol §5.1)
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: b1-general-sft
+track: track_b_two_stage
+phase: phase1_general
+objective: sft
+
+lineage:
+  initialization_mode: from_base
+
+data:
+  source:
+    local_path: data/p1/p1_general_sft.jsonl
+    # After the P1 data freeze, pin: fingerprint: sha256:<from p1_manifest.json>
+
+training:
+  learning_rate: 1.0e-5
+  num_train_epochs: 2.0
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8

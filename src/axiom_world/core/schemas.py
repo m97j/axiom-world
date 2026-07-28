@@ -178,6 +178,15 @@ class ExperimentConfig(StrictModel):
                     "Track B Phase 2 runs must continue the Phase-1 champion adapter "
                     "(protocol §5.1 B4-B6)."
                 )
+        if self.phase is Phase.PHASE1_GENERAL and (
+            self.lineage.initialization_mode is not InitializationMode.FROM_BASE
+            and self.objective is Objective.SFT
+            and self.lineage.parent_run_id is None
+        ):
+            violations.append(
+                "Phase 1 SFT (B1/B2) must initialize from base; only B3 preference "
+                "stages may continue a P1 adapter (set lineage.parent_run_id)."
+            )
         return violations
 
 
