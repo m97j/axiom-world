@@ -66,6 +66,11 @@ def main() -> int:
                              "(stratified across sources).")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", default="data/p1")
+    parser.add_argument("--hf-sync-repo", default=None,
+                        help="HF DATASET repo (user/name). When set, the P1 mixture "
+                             "+ holdout + manifest are uploaded after build.")
+    parser.add_argument("--hf-path-in-repo", default="p1/v1",
+                        help="Destination path inside the dataset repo.")
     args = parser.parse_args()
 
     from datasets import load_dataset  # lazy: generation/training session only
@@ -139,6 +144,17 @@ def main() -> int:
     print(json.dumps(manifest, indent=2))
     print("\nFreeze the holdout fingerprint; it is the general-retention suite "
           "used by the Stage-1 hard constraint (protocol §6).")
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import upload_directory
+
+        uri = upload_directory(
+            output_dir, args.hf_sync_repo,
+            path_in_repo=args.hf_path_in_repo, repo_type="dataset",
+            commit_message=f"P1 mixture build (seed={args.seed}, "
+                           f"total={args.total}, holdout={args.holdout})",
+        )
+        print(f"P1 data persisted: {uri}")
     return 0
 
 

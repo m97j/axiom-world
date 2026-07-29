@@ -70,6 +70,12 @@ def main() -> int:
     parser.add_argument("--scenarios-per-family", type=int, default=400)
     parser.add_argument("--output-dir", default="data/train")
     parser.add_argument("--eval-freeze-manifest", default="data/eval_suites/freeze_manifest.json")
+    parser.add_argument("--hf-sync-repo", default=None,
+                        help="HF DATASET repo (user/name). When set, the output dir "
+                             "(jsonl + train_manifest.json) is uploaded after a "
+                             "successful build.")
+    parser.add_argument("--hf-path-in-repo", default="train/v1",
+                        help="Destination path inside the dataset repo.")
     args = parser.parse_args()
 
     freeze_path = Path(args.eval_freeze_manifest)
@@ -135,6 +141,17 @@ def main() -> int:
         json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
     )
     print(json.dumps(manifest, indent=2))
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import upload_directory
+
+        uri = upload_directory(
+            output_dir, args.hf_sync_repo,
+            path_in_repo=args.hf_path_in_repo, repo_type="dataset",
+            commit_message=f"training data build (seed={args.seed}, "
+                           f"sft={len(sft_records)}, prompts={len(prompt_records)})",
+        )
+        print(f"training data persisted: {uri}")
     return 0
 
 

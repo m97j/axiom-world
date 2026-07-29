@@ -51,6 +51,11 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--episodes-per-suite", type=int, default=300)
     parser.add_argument("--output-dir", default="data/eval_suites")
+    parser.add_argument("--hf-sync-repo", default=None,
+                        help="HF DATASET repo (user/name). When set, the frozen "
+                             "suites + freeze_manifest.json are uploaded after build.")
+    parser.add_argument("--hf-path-in-repo", default="eval_suites/v1",
+                        help="Destination path inside the dataset repo.")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -109,6 +114,17 @@ def main() -> int:
     print(f"\nG3 freeze manifest -> {freeze_path}")
     print("Commit this manifest; training loaders must pass eval_family_ids as "
           "forbidden_family_ids (leakage gate).")
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import upload_directory
+
+        uri = upload_directory(
+            output_dir, args.hf_sync_repo,
+            path_in_repo=args.hf_path_in_repo, repo_type="dataset",
+            commit_message=f"freeze eval suites (seed={args.seed}, "
+                           f"{args.episodes_per_suite}/suite)",
+        )
+        print(f"eval suites persisted: {uri}")
     return 0
 
 
