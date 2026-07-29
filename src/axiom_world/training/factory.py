@@ -102,7 +102,13 @@ def build_trainer(
         "seed": config.runtime.seed,
         "bf16": config.runtime.precision == "bf16",
         "report_to": ["wandb"],
+        # Deterministic W&B identity: project comes from the recipe's project
+        # name, run name from the pre-registered experiment name (protocol §5).
+        "run_name": config.experiment_name,
     }
+    import os
+
+    os.environ.setdefault("WANDB_PROJECT", config.project.name)
     if training.max_steps is not None:
         common["max_steps"] = training.max_steps
     if training.num_train_epochs is not None:

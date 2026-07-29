@@ -55,6 +55,13 @@ def main() -> int:
     parser.add_argument("--suites-dir", default="data/eval_suites")
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--workspace", default=".")
+    parser.add_argument(
+        "--hf-sync-repo",
+        default=None,
+        help="Private HF model repo (user/name). When set, the eval run's "
+        "artifacts dir (evaluation_summary.json, manifests) is uploaded "
+        "under runs/<run_id>/ after evaluation completes.",
+    )
     args = parser.parse_args()
 
     config, fingerprint, mapping = resolve(args.config, args.override)
@@ -86,6 +93,17 @@ def main() -> int:
         ArtifactKind.EVALUATION,
     )
     print(f"eval run: {ctx.run_id}")
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import upload_directory
+
+        uri = upload_directory(
+            ctx.paths.artifacts_dir,
+            args.hf_sync_repo,
+            path_in_repo=f"runs/{ctx.run_id}",
+            commit_message=f"eval artifacts: {ctx.run_id}",
+        )
+        print(f"eval artifacts synced -> {uri}")
     return 0
 
 
