@@ -1,8 +1,7 @@
 model:
   repo_id: Qwen/Qwen3-8B-Base
-  # Replace with the exact commit hash at first download (protocol §4.1).
-  # 'main' is rejected by strict canonical validation on purpose.
-  revision: REPLACE_WITH_EXACT_COMMIT_HASH
+  # Pinned at first download per protocol §4.1 (was REPLACE_WITH_EXACT_COMMIT_HASH).
+  revision: 49e3418fbbbca6ecbdf9608b4d22e5a407081db4
   max_seq_length: 4096
 
 adapter:
