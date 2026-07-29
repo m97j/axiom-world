@@ -62,7 +62,7 @@ def _git_state() -> dict[str, object]:
     }
 
 
-def main() -> int:   # noqa: PLR0915
+def main() -> int:     # noqa: PLR0912, PLR0915
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--override", action="append", default=[])
@@ -70,6 +70,12 @@ def main() -> int:   # noqa: PLR0915
     parser.add_argument("--parent-adapter-dir", default=None,
                         help="Local dir of the hash-verified parent adapter (Track B).")
     parser.add_argument("--eval-freeze-manifest", default="data/eval_suites/freeze_manifest.json")
+    parser.add_argument("--hf-sync-repo", default=None,
+                        help="Private HF model repo for checkpoint persistence "
+                             "(Colab 24h survival). Example: <user>/axiom-runs-a1")
+    parser.add_argument("--resume-from", default=None,
+                        help="Local checkpoint dir OR 'hub' to fetch the newest "
+                             "checkpoint from --hf-sync-repo.")
     args = parser.parse_args()
 
     config, fingerprint, mapping = resolve(args.config, args.override)
@@ -132,9 +138,35 @@ def main() -> int:   # noqa: PLR0915
         reward_funcs=reward_funcs,
     )
 
+    resume_path: str | None = None
+    if args.resume_from == "hub":
+        if not args.hf_sync_repo:
+            raise SystemExit("--resume-from hub requires --hf-sync-repo.")
+        from axiom_world.integrations.hf_sync import download_latest_checkpoint
+
+        restored = download_latest_checkpoint(args.hf_sync_repo, ctx.paths.checkpoints_dir)
+        if restored is None:
+            print("no hub checkpoint found; starting fresh")
+        else:
+            resume_path = str(restored)
+            print(f"resuming from hub checkpoint: {resume_path}")
+    elif args.resume_from:
+        resume_path = args.resume_from
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import HFCheckpointSync
+
+        trainer.add_callback(
+            HFCheckpointSync(
+                repo_id=args.hf_sync_repo,
+                run_id=ctx.run_id,
+                artifacts_dir=ctx.paths.artifacts_dir,
+            ).build()
+        )
+
     ctx.transition(RunStatus.RUNNING)
     try:
-        result = trainer.train()
+        result = trainer.train(resume_from_checkpoint=resume_path)
         adapter_dir = ctx.paths.artifacts_dir / "final_adapter"
         trainer.model.save_pretrained(adapter_dir)
         tokenizer.save_pretrained(adapter_dir)
@@ -159,6 +191,15 @@ def main() -> int:   # noqa: PLR0915
         ctx.transition(RunStatus.COMPLETED)
         print(f"COMPLETED: {ctx.run_id}")
         print(f"final adapter sha256: {lineage.output_adapter_sha256}")
+        if args.hf_sync_repo:
+            from axiom_world.integrations.hf_sync import upload_directory
+
+            location = upload_directory(
+                ctx.paths.artifacts_dir, args.hf_sync_repo,
+                path_in_repo="artifacts",
+                commit_message=f"{ctx.run_id}: final artifacts",
+            )
+            print(f"artifacts persisted: {location}")
     except Exception:
         ctx.transition(RunStatus.FAILED)
         raise

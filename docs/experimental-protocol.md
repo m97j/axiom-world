@@ -7,10 +7,10 @@
 > protocol must cite the protocol version they were run under.
 
 - Project: **Axiom-World — Verifier-Guided Two-Stage Post-Training for Rule-Constrained Game-World Interaction on a Single Blackwell GPU**
-- Author: [FULL NAME] (independent researcher)
+- Author: Minjae Kim (independent researcher)
 - Protocol version: `v1.0`
 - Date frozen: `2026-07-23` (KST)
-- Code anchor: git commit `040835f2f19fe72b9a79d4a20395da5ce2c5a282` of `github.com/<user>/axiom-world`
+- Code anchor: git commit `040835f2f19fe72b9a79d4a20395da5ce2c5a282` of `github.com/m97j/axiom-world`
 - Companion documents: `docs/architecture.md`, `docs/verifier-contract.md`, `docs/data-governance.md`, `docs/reproducibility.md`
 
 ---
