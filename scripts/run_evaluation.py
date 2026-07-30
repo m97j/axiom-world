@@ -29,20 +29,28 @@ def make_generator(config, adapter_dir: str | None, max_new_tokens: int):
         from peft import PeftModel
 
         base = model.get_base_model() if hasattr(model, "get_base_model") else model
+        # Drop the stale peft_config left by the builder's fresh LoRA wrapper
+        # so PeftModel.from_pretrained attaches ONLY the trained adapter.
+        if hasattr(base, "peft_config"):
+            del base.peft_config
         model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
 
     @torch.no_grad()
     def generate(prompt: str) -> str:
         messages = [{"role": "user", "content": prompt}]
+        # transformers v5: apply_chat_template returns a BatchEncoding dict
+        # (not a bare tensor), so unpack explicitly.
         inputs = tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, return_tensors="pt"
+            messages, add_generation_prompt=True, return_tensors="pt",
+            return_dict=True,
         ).to(model.device)
+        prompt_len = inputs["input_ids"].shape[1]
         output = model.generate(
-            inputs, max_new_tokens=max_new_tokens, do_sample=False,
+            **inputs, max_new_tokens=max_new_tokens, do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
         )
-        return tokenizer.decode(output[0][inputs.shape[1]:], skip_special_tokens=True)
+        return tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True)
 
     return generate
 

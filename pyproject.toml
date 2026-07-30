@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiom-world"
-version = "0.2.6"
+version = "0.2.7"
 description = "Verifier-guided two-stage post-training framework — core contract layer"
 requires-python = ">=3.12"
 dependencies = [
