@@ -1,0 +1,15 @@
+# Eval-only recipe — frozen PlayWorld suites (protocol §7).
+# Used for Base / A1 / B4 / champion evaluation. The subject under test is
+# selected at launch via --adapter-dir (omit it to evaluate the raw base model).
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: eval-playworld
+track: system_benchmark
+phase: phase2_playworld
+objective: eval_only
+
+lineage:
+  initialization_mode: from_base

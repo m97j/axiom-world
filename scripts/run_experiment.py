@@ -189,6 +189,11 @@ def main() -> int:     # noqa: PLR0912, PLR0915
             "run_card.json", ctx.run_card().model_dump(mode="json"), ArtifactKind.MANIFEST
         )
         ctx.transition(RunStatus.COMPLETED)
+        # Re-write the run card so the persisted status reflects the terminal
+        # state (previously it froze at 'running').
+        ctx.write_json_artifact(
+            "run_card.json", ctx.run_card().model_dump(mode="json"), ArtifactKind.MANIFEST
+        )
         print(f"COMPLETED: {ctx.run_id}")
         print(f"final adapter sha256: {lineage.output_adapter_sha256}")
         if args.hf_sync_repo:
