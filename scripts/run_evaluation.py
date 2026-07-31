@@ -34,6 +34,18 @@ def make_batch_generator(config, adapter_dir: str | None, max_new_tokens: int):
     tokenizer.padding_side = "left"
     stats = {"truncated": 0}
 
+    # Stop on BOTH the tokenizer eos and the chat-template turn terminator.
+    # Qwen templates end assistant turns with <|im_end|>, which differs from
+    # the base tokenizer's eos (<|endoftext|>); without it greedy decoding
+    # never stops, overruns the budget, and every output parses as malformed
+    # JSON (the eval-1 failure mode: 1447/1500 truncated).
+    stop_ids = {tokenizer.eos_token_id}
+    im_end = tokenizer.convert_tokens_to_ids("<|im_end|>")
+    if isinstance(im_end, int) and im_end is not None and im_end >= 0:
+        stop_ids.add(im_end)
+    stop_ids.discard(None)
+    stop_ids = sorted(stop_ids)
+
     @torch.no_grad()
     def generate_batch(prompts: list[str]) -> list[str]:
         conversations = [[{"role": "user", "content": p}] for p in prompts]
@@ -45,12 +57,12 @@ def make_batch_generator(config, adapter_dir: str | None, max_new_tokens: int):
         output = model.generate(
             **inputs, max_new_tokens=max_new_tokens, do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=stop_ids,
         )
         completions = output[:, prompt_len:]
         texts = tokenizer.batch_decode(completions, skip_special_tokens=True)
-        eos_id = tokenizer.eos_token_id
         for row in completions:
-            if len(row) == max_new_tokens and eos_id not in row:
+            if len(row) == max_new_tokens and not any(s in row for s in stop_ids):
                 stats["truncated"] += 1
         return texts
 
