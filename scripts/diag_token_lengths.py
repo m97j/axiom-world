@@ -29,8 +29,21 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from axiom_world.core.config_loader import resolve
+
+
+def _token_ids(tokenizer: Any, messages: list[dict], **kwargs: Any) -> list[int]:
+    """Return a flat list of token ids across Transformers v4/v5.
+
+    Transformers v5 defaults `return_dict=True` for apply_chat_template, so
+    the naive `len(result)` counts DICT KEYS (== 2), not tokens — which is
+    exactly the failure mode this helper guards against. We force tokenize
+    via text rendering + encode() to stay version-proof.
+    """
+    text = tokenizer.apply_chat_template(messages, tokenize=False, **kwargs)
+    return tokenizer.encode(text, add_special_tokens=False)
 
 
 def _percentile(sorted_values: list[int], q: float) -> int:
@@ -68,14 +81,17 @@ def main() -> int:
         record = json.loads(line)
         messages = record["messages"]
         non_assistant = [m for m in messages if m["role"] != "assistant"]
-        full_ids = tokenizer.apply_chat_template(messages, tokenize=True)
-        prompt_ids = tokenizer.apply_chat_template(
-            non_assistant, tokenize=True, add_generation_prompt=True
-        )
+        full_ids = _token_ids(tokenizer, messages)
+        prompt_ids = _token_ids(tokenizer, non_assistant, add_generation_prompt=True)
         full_lengths.append(len(full_ids))
         prompt_lengths.append(len(prompt_ids))
 
     n = len(full_lengths)
+    if n and max(full_lengths) < 16:
+        raise RuntimeError(
+            "Sanity check failed: measured lengths are implausibly small — "
+            "tokenization path is broken; do not trust this report."
+        )
     sorted_full = sorted(full_lengths)
     print("=" * 70)
     print(f"records tokenized: {n}  (file: {args.prompt_file})")
