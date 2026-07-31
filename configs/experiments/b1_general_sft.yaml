@@ -19,6 +19,7 @@ data:
 
 training:
   learning_rate: 1.0e-5
+  max_length: 4096   # explicit: NEVER rely on TRL's 1024 default (A1 collapse root cause)
   num_train_epochs: 2.0
   per_device_batch_size: 2
   gradient_accumulation_steps: 8

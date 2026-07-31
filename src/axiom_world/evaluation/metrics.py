@@ -46,7 +46,7 @@ def paired_bootstrap_diff(
         raise ValueError("Paired bootstrap requires equal-length, non-empty sequences.")
     rng = random.Random(seed)
     n = len(values_a)
-    diffs = [a - b for a, b in zip(values_a, values_b, strict=False)]
+    diffs = [a - b for a, b in zip(values_a, values_b, strict=True)]
     point = sum(diffs) / n
     resampled = sorted(
         sum(diffs[rng.randrange(n)] for _ in range(n)) / n for _ in range(resamples)

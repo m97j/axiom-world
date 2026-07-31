@@ -67,7 +67,7 @@ def main() -> int:
     print("eval prompt is a prefix of train text:", is_prefix)
     if not is_prefix:
         # locate first divergence
-        i = next((k for k, (a, b) in enumerate(zip(train_text, eval_text, strict=False)) if a != b),
+        i = next((k for k, (a, b) in enumerate(zip(train_text, eval_text, strict=True)) if a != b),
                  min(len(train_text), len(eval_text)))
         print(f"FIRST DIVERGENCE at char {i}:")
         print("  train:", repr(train_text[max(0, i - 60): i + 60]))

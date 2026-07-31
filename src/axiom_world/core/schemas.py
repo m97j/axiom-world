@@ -115,6 +115,19 @@ class TrainingConfig(StrictModel):
     logging_steps: int = 10
     save_steps: int = 200
     max_grad_norm: float = 1.0
+    max_length: int = 4096
+    """Hard cap on tokenized sequence length passed to the TRL trainer config.
+
+    NEVER leave this to the TRL default (1024 in TRL 1.x): PlayWorld prompts
+    routinely exceed 1024 tokens, and right-truncation silently deletes the
+    assistant completion — the model then 'learns' to continue prompts instead
+    of answering them (root cause of the A1 eval collapse, see e03 diagnostic).
+    """
+    assistant_only_loss: bool = False
+    """Forwarded to TRL SFTConfig when True. Left False by default because
+    Qwen3-Base's chat template lacks the `{% generation %}` keyword TRL needs
+    for assistant token masking; enabling it without template support raises.
+    """
     extra: dict[str, Any] = Field(
         default_factory=dict,
         description="Objective-specific knobs (e.g. dpo.beta, grpo.num_generations). "

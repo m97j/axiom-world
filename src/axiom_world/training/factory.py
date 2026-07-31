@@ -105,7 +105,13 @@ def build_trainer(
         # Deterministic W&B identity: project comes from the recipe's project
         # name, run name from the pre-registered experiment name (protocol §5).
         "run_name": config.experiment_name,
+        # Sequence-length contract (v0.3.3): TRL 1.x defaults max_length to
+        # 1024 and right-truncates, which silently deletes long assistant
+        # completions from the loss. Always pass it explicitly.
+        "max_length": training.max_length,
     }
+    if objective is Objective.SFT and training.assistant_only_loss:
+        common["assistant_only_loss"] = True
     import os
 
     os.environ.setdefault("WANDB_PROJECT", config.project.name)
@@ -115,7 +121,13 @@ def build_trainer(
         common["num_train_epochs"] = training.num_train_epochs
     common.update(training.extra)  # objective-specific knobs (beta, num_generations, ...)
 
-    trainer_config = config_cls(**_filter_kwargs(config_cls.__init__, common))
+    filtered = _filter_kwargs(config_cls.__init__, common)
+    if objective in (Objective.SFT, Objective.DPO) and "max_length" not in filtered:
+        raise UnsupportedTRLAPIError(
+            f"{config_name} does not accept 'max_length'; refusing to train with an "
+            "implicit truncation policy. Pin the TRL version validated at Gate G1."
+        )
+    trainer_config = config_cls(**filtered)
 
     trainer_kwargs: dict[str, Any] = {
         "model": model,
