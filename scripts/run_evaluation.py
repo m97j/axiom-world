@@ -19,40 +19,42 @@ from axiom_world.runtime.audit import collect_environment_manifest
 from axiom_world.verifiers.hybrid import default_playworld_verifier
 
 
-def make_generator(config, adapter_dir: str | None, max_new_tokens: int):
+def make_batch_generator(config, adapter_dir: str | None, max_new_tokens: int):
+    """Batched greedy decoding (canonical profile). Returns (fn, stats).
+
+    Left padding keeps every prompt right-aligned so batched greedy output
+    is identical to batch-size-1 output. stats["truncated"] counts outputs
+    that hit the max_new_tokens budget (possible malformed-JSON cause).
+    """
     import torch
 
-    from axiom_world.models.builder import build_model_and_tokenizer
+    from axiom_world.models.builder import build_for_inference
 
-    model, tokenizer = build_model_and_tokenizer(config)
-    if adapter_dir:
-        from peft import PeftModel
-
-        base = model.get_base_model() if hasattr(model, "get_base_model") else model
-        # Drop the stale peft_config left by the builder's fresh LoRA wrapper
-        # so PeftModel.from_pretrained attaches ONLY the trained adapter.
-        if hasattr(base, "peft_config"):
-            del base.peft_config
-        model = PeftModel.from_pretrained(base, adapter_dir)
-    model.eval()
+    model, tokenizer = build_for_inference(config, adapter_dir)
+    tokenizer.padding_side = "left"
+    stats = {"truncated": 0}
 
     @torch.no_grad()
-    def generate(prompt: str) -> str:
-        messages = [{"role": "user", "content": prompt}]
-        # transformers v5: apply_chat_template returns a BatchEncoding dict
-        # (not a bare tensor), so unpack explicitly.
+    def generate_batch(prompts: list[str]) -> list[str]:
+        conversations = [[{"role": "user", "content": p}] for p in prompts]
         inputs = tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, return_tensors="pt",
-            return_dict=True,
+            conversations, add_generation_prompt=True, return_tensors="pt",
+            return_dict=True, padding=True,
         ).to(model.device)
         prompt_len = inputs["input_ids"].shape[1]
         output = model.generate(
             **inputs, max_new_tokens=max_new_tokens, do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
         )
-        return tokenizer.decode(output[0][prompt_len:], skip_special_tokens=True)
+        completions = output[:, prompt_len:]
+        texts = tokenizer.batch_decode(completions, skip_special_tokens=True)
+        eos_id = tokenizer.eos_token_id
+        for row in completions:
+            if len(row) == max_new_tokens and eos_id not in row:
+                stats["truncated"] += 1
+        return texts
 
-    return generate
+    return generate_batch, stats
 
 
 def main() -> int:
@@ -61,7 +63,9 @@ def main() -> int:
     parser.add_argument("--override", action="append", default=[])
     parser.add_argument("--adapter-dir", default=None)
     parser.add_argument("--suites-dir", default="data/eval_suites")
-    parser.add_argument("--max-new-tokens", type=int, default=512)
+    parser.add_argument("--max-new-tokens", type=int, default=768)
+    parser.add_argument("--batch-size", type=int, default=24,
+                        help="Prompts per generation batch (95GB VRAM: 16-32 is safe).")
     parser.add_argument("--workspace", default=".")
     parser.add_argument(
         "--hf-sync-repo",
@@ -79,8 +83,12 @@ def main() -> int:
         "environment_manifest.json", collect_environment_manifest(), ArtifactKind.MANIFEST
     )
 
-    generator = make_generator(config, args.adapter_dir, args.max_new_tokens)
-    runner = EvaluationRunner(default_playworld_verifier(), generator)
+    generator, gen_stats = make_batch_generator(config, args.adapter_dir, args.max_new_tokens)
+    runner = EvaluationRunner(
+        default_playworld_verifier(),
+        batch_generator=generator,
+        batch_size=args.batch_size,
+    )
 
     suites_dir = Path(args.suites_dir)
     freeze = json.loads((suites_dir / "freeze_manifest.json").read_text())
@@ -90,13 +98,18 @@ def main() -> int:
             suites_dir / f"{suite_name}.jsonl", "evaluation",
             expected_fingerprint=entry["fingerprint"],  # frozen-suite hard gate
         )
-        result = runner.run(bundle)
+        result = runner.run(bundle, context=ctx)  # ctx => evaluation.jsonl traces persisted
         combined[suite_name] = result["summary"]["suites"][suite_name]
         print(f"{suite_name}: pass_rate={combined[suite_name].get('pass_rate')}")
+
+    print(f"outputs truncated at max_new_tokens: {gen_stats['truncated']}")
 
     ctx.write_json_artifact(
         "evaluation_summary.json",
         {"adapter_dir": args.adapter_dir, "suites": combined,
+         "decoding": {"max_new_tokens": args.max_new_tokens,
+                      "batch_size": args.batch_size,
+                      "truncated_outputs": gen_stats["truncated"]},
          "freeze_fingerprint": freeze["manifest_fingerprint"]},
         ArtifactKind.EVALUATION,
     )

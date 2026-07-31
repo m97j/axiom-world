@@ -19,10 +19,8 @@ from axiom_world.core.lineage import verify_parent_adapter
 from axiom_world.core.schemas import ExperimentConfig
 
 
-def build_model_and_tokenizer(
-    config: ExperimentConfig,
-    parent_adapter_dir: Path | None = None,
-) -> tuple[Any, Any]:
+def _load_base_and_tokenizer(config: ExperimentConfig) -> tuple[Any, Any]:
+    """Load the pinned base model + tokenizer (shared by training/inference)."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -51,6 +49,32 @@ def build_model_and_tokenizer(
         )
 
     model = AutoModelForCausalLM.from_pretrained(model_cfg.repo_id, **load_kwargs)
+    return model, tokenizer
+
+
+def build_for_inference(
+    config: ExperimentConfig,
+    adapter_dir: Path | str | None = None,
+) -> tuple[Any, Any]:
+    """Frozen inference model: base only, or base + a TRAINED adapter.
+
+    Central inference entry point (no throwaway LoRA wrapper, no gradient
+    checkpointing). Callers must not attach adapters themselves.
+    """
+    model, tokenizer = _load_base_and_tokenizer(config)
+    if adapter_dir is not None:
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model, str(adapter_dir))
+    model.eval()
+    return model, tokenizer
+
+
+def build_model_and_tokenizer(
+    config: ExperimentConfig,
+    parent_adapter_dir: Path | None = None,
+) -> tuple[Any, Any]:
+    model, tokenizer = _load_base_and_tokenizer(config)
     model.config.use_cache = False
 
     mode = config.lineage.initialization_mode

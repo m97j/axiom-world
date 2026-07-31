@@ -19,17 +19,44 @@ from axiom_world.verifiers.base import Verifier
 
 
 class EvaluationRunner:
-    def __init__(self, verifier: Verifier, generator: Callable[[str], str]) -> None:
+    def __init__(
+        self,
+        verifier: Verifier,
+        generator: Callable[[str], str] | None = None,
+        batch_generator: Callable[[list[str]], list[str]] | None = None,
+        batch_size: int = 16,
+    ) -> None:
+        if generator is None and batch_generator is None:
+            raise ValueError("EvaluationRunner needs a generator or a batch_generator.")
         self.verifier = verifier
         self.generator = generator
+        self.batch_generator = batch_generator
+        self.batch_size = batch_size
+
+    def _generate_all(self, prompts: list[str]) -> list[str]:
+        try:
+            from tqdm.auto import tqdm
+        except ImportError:  # pragma: no cover
+            tqdm = lambda x, **k: x  # noqa: E731
+
+        if self.batch_generator is not None:
+            outputs: list[str] = []
+            batches = [
+                prompts[i : i + self.batch_size]
+                for i in range(0, len(prompts), self.batch_size)
+            ]
+            for batch in tqdm(batches, desc="generate(batched)"):
+                outputs.extend(self.batch_generator(batch))
+            return outputs
+        return [self.generator(p) for p in tqdm(prompts, desc="generate")]
 
     def run(self, bundle: DataBundle, context: ExperimentContext | None = None) -> dict[str, Any]:
         if bundle.kind != "evaluation":
             raise ValueError(f"EvaluationRunner requires an evaluation bundle, got {bundle.kind!r}.")
         traces: list[dict[str, Any]] = []
-        for record in bundle.records:
-            prompt_text = "\n".join(m.content for m in record.prompt)
-            prediction = self.generator(prompt_text)
+        prompts = ["\n".join(m.content for m in record.prompt) for record in bundle.records]
+        predictions = self._generate_all(prompts)
+        for record, prediction in zip(bundle.records, predictions, strict=True):
             verdict = self.verifier.verify(prediction, {"scenario": record.scenario})
             traces.append(
                 {
@@ -52,13 +79,14 @@ class EvaluationRunner:
             summary["suites"][suite] = summarize_suite(suite_traces)
 
         if context is not None:
-            path = context.paths.artifact("evaluation.jsonl")
+            # Suite-scoped trace file so multi-suite eval runs don't overwrite
+            # each other; run_evaluation.py writes the combined summary itself.
+            first_suite = traces[0]["suite"] if traces else "empty"
+            trace_name = f"evaluation_{first_suite}.jsonl"
+            path = context.paths.artifact(trace_name)
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding="utf-8") as handle:
                 for trace in traces:
                     handle.write(json.dumps(trace, ensure_ascii=False, sort_keys=True) + "\n")
-            context.register_artifact("evaluation.jsonl", ArtifactKind.EVALUATION)
-            context.write_json_artifact(
-                "evaluation_summary.json", summary, ArtifactKind.EVALUATION
-            )
+            context.register_artifact(trace_name, ArtifactKind.EVALUATION)
         return {"summary": summary, "traces": traces}

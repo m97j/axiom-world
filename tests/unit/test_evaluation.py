@@ -46,8 +46,7 @@ def test_runner_writes_artifacts(tmp_path: Path) -> None:
     result = EvaluationRunner(default_playworld_verifier(), lambda p: GOOD).run(bundle, ctx)
     suite = result["summary"]["suites"]["eval_id"]
     assert suite["pass_rate"]["mean"] == 1.0
-    assert ctx.paths.artifact("evaluation.jsonl").is_file()
-    assert ctx.paths.artifact("evaluation_summary.json").is_file()
+    assert ctx.paths.artifact("evaluation_eval_id.jsonl").is_file()
 
 
 def test_failure_taxonomy_in_summary(tmp_path: Path) -> None:
