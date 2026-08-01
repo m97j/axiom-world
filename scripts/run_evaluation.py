@@ -46,12 +46,30 @@ def make_batch_generator(config, adapter_dir: str | None, max_new_tokens: int):
     stop_ids.discard(None)
     stop_ids = sorted(stop_ids)
 
+    # Distribution-matching opener seed (v0.3.11, diagnostic e01-e08 chain).
+    # Qwen3's chat template injects an EMPTY think block
+    # '<think>\n\n</think>\n\n' at the start of every assistant training
+    # target, but Qwen3-8B-BASE has effectively untrained <think>/</think>
+    # embeddings and LoRA (attention/MLP only) cannot repair the opener:
+    # the tuned adapter's distribution is flat garbage on those positions
+    # (e05: top-1 p=0.014) yet emits exact PlayWorld JSON once the opener
+    # is consumed (e05 forced k=4). Seeding the opener into the prompt
+    # aligns eval conditioning with the training distribution; the seed is
+    # NOT part of the scored completion.
+    opener_seed = "<think>\n\n</think>\n\n"
+
     @torch.no_grad()
     def generate_batch(prompts: list[str]) -> list[str]:
         conversations = [[{"role": "user", "content": p}] for p in prompts]
-        inputs = tokenizer.apply_chat_template(
-            conversations, add_generation_prompt=True, return_tensors="pt",
-            return_dict=True, padding=True,
+        texts = [
+            tokenizer.apply_chat_template(
+                conversation, tokenize=False, add_generation_prompt=True
+            )
+            + opener_seed
+            for conversation in conversations
+        ]
+        inputs = tokenizer(
+            texts, return_tensors="pt", padding=True, add_special_tokens=False,
         ).to(model.device)
         prompt_len = inputs["input_ids"].shape[1]
         output = model.generate(
