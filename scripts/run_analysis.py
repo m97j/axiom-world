@@ -36,6 +36,12 @@ def main() -> int:
     parser.add_argument("--suites", nargs="+", default=DEFAULT_SUITES)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", default=None)
+    parser.add_argument(
+        "--hf-sync-repo", default=None,
+        help="If set, upload the analysis summary next to run-a's eval "
+        "artifacts (runs/<run_a>/ in the repo), keeping the comparison "
+        "reproducible across sessions.",
+    )
     args = parser.parse_args()
 
     from axiom_world.analysis import compare_runs
@@ -63,6 +69,17 @@ def main() -> int:
     output = Path(args.output) if args.output else Path(args.run_a) / "analysis_summary.json"
     output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     print(f"analysis summary -> {output}")
+
+    if args.hf_sync_repo:
+        from axiom_world.integrations.hf_sync import upload_directory
+
+        run_a = Path(args.run_a)
+        destination = upload_directory(
+            run_a, args.hf_sync_repo,
+            path_in_repo=f"runs/{run_a.name}",
+            commit_message=f"analysis: {args.label_a} vs {args.label_b}",
+        )
+        print(f"analysis artifacts synced -> {destination}")
     return 0
 
 
