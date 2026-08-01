@@ -59,6 +59,12 @@ def probe_overfit(config, tokenizer, records, steps: int) -> None:
     }.items():
         if hasattr(tiny_config, name):
             setattr(tiny_config, name, value)
+    # Transformers v5 strict config validation: layer_types must match
+    # num_hidden_layers, and the checkpoint-save path validates the config
+    # (this crashed e08's first run at the end-of-training save).
+    layer_types = getattr(tiny_config, "layer_types", None)
+    if layer_types:
+        tiny_config.layer_types = list(layer_types)[: tiny_config.num_hidden_layers]
     model = AutoModelForCausalLM.from_config(tiny_config)
 
     dataset = Dataset.from_list([{"messages": r["messages"]} for r in records])
@@ -76,6 +82,11 @@ def probe_overfit(config, tokenizer, records, steps: int) -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         trainer = build_trainer(config, model, tokenizer, dataset, output_dir=tmp)
+        # Belt-and-braces: disable checkpointing entirely for the probe; we
+        # only need in-memory weights, and saving is where v5 validation bites.
+        trainer.args.save_strategy = "no"
+        if hasattr(trainer, "control"):
+            trainer.control.should_save = False
         trainer.train()
         processed = trainer.train_dataset
 
