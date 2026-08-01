@@ -46,6 +46,29 @@ def upload_directory(
     return f"hf://{repo_type}/{repo_id}/{path_in_repo}".rstrip("/")
 
 
+def download_run_directory(
+    repo_id: str,
+    run_id: str,
+    workspace: Path | str = ".",
+    repo_type: str = "model",
+) -> Path:
+    """Fetch a persisted ``runs/<run_id>/`` tree from a repo (eval runs).
+
+    Read-path counterpart of the ``path_in_repo=f"runs/{run_id}"`` upload in
+    run_evaluation.py. Training-run artifacts live at the repo ROOT under
+    ``artifacts/`` (one run per repo) and are handled by fetch_run.py's
+    adapter path; eval runs are nested under ``runs/`` (many per repo), so
+    they need their own targeted snapshot.
+    """
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(
+        repo_id, repo_type=repo_type, local_dir=str(workspace),
+        allow_patterns=[f"runs/{run_id}/*"],
+    )
+    return Path(workspace) / "runs" / run_id
+
+
 def download_latest_checkpoint(repo_id: str, local_dir: Path | str) -> Path | None:
     """Fetch the highest-step checkpoint-* tree from a model repo, or None."""
     from huggingface_hub import HfApi, snapshot_download

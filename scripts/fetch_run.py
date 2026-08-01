@@ -46,7 +46,16 @@ def main() -> int:
                         help="HF model repo the run was synced to (user/name).")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--workspace", default=".")
+    parser.add_argument(
+        "--kind", choices=["adapter", "eval"], default="adapter",
+        help="'adapter': training run persisted at the repo ROOT under "
+        "artifacts/ (verified against lineage.json). 'eval': evaluation run "
+        "persisted under runs/<run_id>/ by run_evaluation.py --hf-sync-repo.",
+    )
     args = parser.parse_args()
+
+    if args.kind == "eval":
+        return _fetch_eval_run(args)
 
     run_dir = Path(args.workspace) / "runs" / args.run_id / "artifacts"
     adapter_dir = run_dir / "final_adapter"
@@ -88,6 +97,42 @@ def main() -> int:
     sha = _verify(adapter_dir, lineage_path)
     print(f"fetched from hf://{args.repo} (sha256 verified: {sha[:19]}...)")
     print(f"ADAPTER_DIR={adapter_dir}")
+    return 0
+
+
+def _fetch_eval_run(args: argparse.Namespace) -> int:
+    """Materialize runs/<run_id>/ (evaluation_*.jsonl + summary) locally."""
+    run_dir = Path(args.workspace) / "runs" / args.run_id
+    summary_path = run_dir / "evaluation_summary.json"
+
+    if not summary_path.is_file():
+        from axiom_world.integrations.hf_sync import download_run_directory
+
+        try:
+            download_run_directory(args.repo, args.run_id, args.workspace)
+        except Exception as exc:  # noqa: BLE001
+            raise SystemExit(
+                f"Eval run {args.run_id} not found locally and fetch from "
+                f"hf://{args.repo} failed ({exc}).\n"
+                "This stage requires a completed evaluation persisted with "
+                "run_evaluation.py --hf-sync-repo."
+            ) from exc
+
+    if not summary_path.is_file():
+        raise SystemExit(
+            f"hf://{args.repo} did not contain runs/{args.run_id}/"
+            "evaluation_summary.json — the eval run may not have completed."
+        )
+    suites = sorted(p.name for p in run_dir.glob("evaluation_*.jsonl"))
+    if not suites:
+        raise SystemExit(
+            f"{run_dir} has a summary but no evaluation_*.jsonl files — "
+            "per-episode outputs are required for paired analysis."
+        )
+    summary = json.loads(summary_path.read_text())
+    print(f"eval run materialized: {len(suites)} suite files, "
+          f"freeze_fingerprint={summary.get('freeze_fingerprint', '?')[:23]}...")
+    print(f"RUN_DIR={run_dir}")
     return 0
 
 
