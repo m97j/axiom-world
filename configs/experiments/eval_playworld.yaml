@@ -13,3 +13,9 @@ objective: eval_only
 
 lineage:
   initialization_mode: from_base
+
+evaluation:
+  # Base-track conditioning (amendment v1.1): match the Qwen3-Base SFT
+  # training rendering, whose assistant targets open with an empty think
+  # block the adapter cannot generate itself (e01-e08 root cause).
+  opener_seed: "<think>\n\n</think>\n\n"

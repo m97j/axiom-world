@@ -8,7 +8,7 @@
 
 - Project: **Axiom-World — Verifier-Guided Two-Stage Post-Training for Rule-Constrained Game-World Interaction on a Single Blackwell GPU**
 - Author: Minjae Kim (independent researcher)
-- Protocol version: `v1.0`
+- Protocol version: `v1.1` (v1.0 text preserved; changes appear only as marked amendment notes + §13 log)
 - Date frozen: `2026-07-23` (KST)
 - Code anchor: git commit `040835f2f19fe72b9a79d4a20395da5ce2c5a282` of `github.com/m97j/axiom-world`
 - Companion documents: `docs/architecture.md`, `docs/verifier-contract.md`, `docs/data-governance.md`, `docs/reproducibility.md`
@@ -277,6 +277,25 @@ prompt, temperature 0. Inference-time policy experiments (self-consistency,
 best-of-N + verifier rerank, adaptive budget — the LogosP study) are a
 **separate reported section** and never substitute for canonical numbers.
 
+> **[Amendment v1.1 — prompt conditioning]** "Fixed chat template" is
+> clarified as follows: suites, verifier, and the greedy decoding profile are
+> fixed across all tracks, but **prompt conditioning matches each subject
+> model's own training-time rendering**, declared per eval recipe in the
+> `evaluation:` config block (`opener_seed`, `few_shot_k`,
+> `few_shot_exemplars_path`) and recorded in `evaluation_summary.json`.
+> Rationale: the A1 failure analysis (diagnostic chain e01–e08, code
+> v0.3.2–v0.3.11) established that Qwen3's chat template injects an empty
+> `<think>\n\n</think>\n\n` opener into every assistant training target,
+> while Qwen3-8B-**Base** has effectively untrained think-token embeddings
+> that attention/MLP LoRA cannot repair; evaluating without seeding that
+> opener measures a harness artifact (93% malformed-JSON collapse), not model
+> capability. Concretely: Base-initialized adapters (Track A, and B4–B6
+> unless their training data fills the think block) seed the empty opener;
+> models trained with populated think blocks and instruct reference models
+> (C1/C2) use an empty seed and generate their own opener. Few-shot
+> conditioning for C2 uses frozen exemplars drawn from train families only
+> (leakage gate preserved). The seed is never part of the scored completion.
+
 ### 7.4 Verifier authority
 
 Deterministic tiers (schema → rules → executable) are the sole reward and
@@ -378,8 +397,9 @@ review by making all decision rules public and time-stamped in git history.
 
 ## 13. Amendment Log
 
-| Version | Date       | Section | Change         | Rationale |
-| ------- | ---------- | ------- | -------------- | --------- |
-| v1.0    | 2026-07-23 | —      | Initial freeze | —        |
+| Version | Date       | Section | Change                                                                                                                                                                                                                                                                                   | Rationale                                                                                                                                                                                                                                                                                                                                                                  |
+| ------- | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0    | 2026-07-23 | —      | Initial freeze                                                                                                                                                                                                                                                                           | —                                                                                                                                                                                                                                                                                                                                                                         |
+| v1.1    | 2026-08-02 | §7.3   | Prompt conditioning matches each model's training-time rendering; conditioning promoted to a pre-declared`evaluation:` config block (`opener_seed`, `few_shot_k`, `few_shot_exemplars_path`) recorded in run artifacts; empty-think opener seeded for Base-initialized adapters. | A1 failure analysis (e01–e08): Qwen3-Base's untrained think-opener tokens under attention/MLP LoRA made the unseeded eval measure a harness artifact (93% malformed-JSON collapse), not capability. Suites/verifier/decoding stay fixed; the rule "condition each model to its own training distribution" is applied uniformly across tracks, preserving fair comparison. |
 
 <!-- Append amendments above. Never edit v1.0 in place. -->

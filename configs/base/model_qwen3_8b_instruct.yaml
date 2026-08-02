@@ -1,0 +1,5 @@
+# Qwen3-8B (post-trained / instruct) — reference baseline model (protocol §4 C1/C2).
+# Pinned revision resolved from the Hub on 2026-08-01; never use 'main'.
+model:
+  repo_id: Qwen/Qwen3-8B
+  revision: b968826d9c46dd6066d109eabc6255188de91218

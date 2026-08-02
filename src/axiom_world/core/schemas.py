@@ -135,6 +135,28 @@ class TrainingConfig(StrictModel):
     )
 
 
+class EvaluationConfig(StrictModel):
+    """Prompt-conditioning profile for eval-only runs (protocol §7, amendment v1.1).
+
+    opener_seed: text appended AFTER the chat template's generation prompt so
+    that eval conditioning matches the subject model's TRAINING-time rendering.
+    Base-initialized SFT adapters need the empty think block
+    '<think>\n\n</think>\n\n' (root-cause chain e01-e08: Qwen3-Base has
+    untrained <think> embeddings that attention/MLP LoRA cannot repair);
+    instruct reference models generate their own opener, so they use "".
+    The seed is never part of the scored completion.
+
+    few_shot_k / few_shot_exemplars_path: C2 reference conditioning. Exemplars
+    are FROZEN in a json file (built once by scripts/build_fewshot_exemplars.py
+    from train families) and injected as alternating user/assistant turns
+    before the episode prompt, identically for every episode.
+    """
+
+    opener_seed: str = ""
+    few_shot_k: int = 0
+    few_shot_exemplars_path: str | None = None
+
+
 class ExperimentConfig(StrictModel):
     """Root config. One YAML recipe == one validated ExperimentConfig."""
 
@@ -149,6 +171,7 @@ class ExperimentConfig(StrictModel):
     lineage: LineageConfig = Field(default_factory=LineageConfig)
     data: DataConfig = Field(default_factory=DataConfig)
     training: TrainingConfig = Field(default_factory=TrainingConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
 
     def validate_canonical(self) -> list[str]:
         """Protocol-level cross-field checks. Returns a list of violations.

@@ -46,21 +46,31 @@ def make_batch_generator(config, adapter_dir: str | None, max_new_tokens: int):
     stop_ids.discard(None)
     stop_ids = sorted(stop_ids)
 
-    # Distribution-matching opener seed (v0.3.11, diagnostic e01-e08 chain).
-    # Qwen3's chat template injects an EMPTY think block
-    # '<think>\n\n</think>\n\n' at the start of every assistant training
-    # target, but Qwen3-8B-BASE has effectively untrained <think>/</think>
-    # embeddings and LoRA (attention/MLP only) cannot repair the opener:
-    # the tuned adapter's distribution is flat garbage on those positions
-    # (e05: top-1 p=0.014) yet emits exact PlayWorld JSON once the opener
-    # is consumed (e05 forced k=4). Seeding the opener into the prompt
-    # aligns eval conditioning with the training distribution; the seed is
-    # NOT part of the scored completion.
-    opener_seed = "<think>\n\n</think>\n\n"
+    # Prompt-conditioning profile (protocol §7 amendment v1.1): opener seed
+    # and frozen few-shot exemplars now come from config.evaluation so each
+    # subject model is conditioned to MATCH ITS OWN training distribution
+    # (v0.3.11 rationale, e01-e08 chain) while suites/verifier/decoding stay
+    # fixed across tracks.
+    profile = config.evaluation
+    opener_seed = profile.opener_seed
+    exemplar_turns: list[dict] = []
+    if profile.few_shot_k:
+        if not profile.few_shot_exemplars_path:
+            raise SystemExit("evaluation.few_shot_k set without few_shot_exemplars_path")
+        exemplars = json.loads(Path(profile.few_shot_exemplars_path).read_text())
+        if len(exemplars) < profile.few_shot_k:
+            raise SystemExit(
+                f"exemplar file has {len(exemplars)} entries < few_shot_k={profile.few_shot_k}"
+            )
+        for exemplar in exemplars[: profile.few_shot_k]:
+            exemplar_turns.append({"role": "user", "content": exemplar["prompt"]})
+            exemplar_turns.append({"role": "assistant", "content": exemplar["completion"]})
 
     @torch.no_grad()
     def generate_batch(prompts: list[str]) -> list[str]:
-        conversations = [[{"role": "user", "content": p}] for p in prompts]
+        conversations = [
+            exemplar_turns + [{"role": "user", "content": p}] for p in prompts
+        ]
         texts = [
             tokenizer.apply_chat_template(
                 conversation, tokenize=False, add_generation_prompt=True
@@ -140,6 +150,9 @@ def main() -> int:
          "decoding": {"max_new_tokens": args.max_new_tokens,
                       "batch_size": args.batch_size,
                       "truncated_outputs": gen_stats["truncated"]},
+         "conditioning": {"opener_seed": config.evaluation.opener_seed,
+                          "few_shot_k": config.evaluation.few_shot_k,
+                          "few_shot_exemplars_path": config.evaluation.few_shot_exemplars_path},
          "freeze_fingerprint": freeze["manifest_fingerprint"]},
         ArtifactKind.EVALUATION,
     )

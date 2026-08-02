@@ -1,0 +1,20 @@
+# C2 — reference baseline: Qwen3-8B instruct, few-shot k=3 (protocol §4/§5.1).
+# Exemplars are FROZEN (scripts/build_fewshot_exemplars.py, train families
+# only — never eval families) and injected identically for every episode.
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_instruct.yaml
+
+experiment_name: eval-playworld-c2-instruct-fewshot
+track: system_benchmark
+phase: phase2_playworld
+objective: eval_only
+
+lineage:
+  initialization_mode: from_base
+
+evaluation:
+  opener_seed: ""
+  few_shot_k: 3
+  few_shot_exemplars_path: data/eval_suites/fewshot_exemplars.json

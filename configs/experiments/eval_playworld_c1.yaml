@@ -1,0 +1,19 @@
+# C1 — reference baseline: Qwen3-8B instruct, zero-shot (protocol §4/§5.1).
+# Fixed anchor for all headline comparisons; run once after G3 freeze.
+# The instruct model generates its own think block, so no opener seed.
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_instruct.yaml
+
+experiment_name: eval-playworld-c1-instruct-zeroshot
+track: system_benchmark
+phase: phase2_playworld
+objective: eval_only
+
+lineage:
+  initialization_mode: from_base
+
+evaluation:
+  opener_seed: ""
+  few_shot_k: 0
