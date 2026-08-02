@@ -1,0 +1,36 @@
+# A2 — Track A: PlayWorld DPO on verifier-mined pairs (protocol §5.1, RQ2).
+# Parent: the A1 SFT adapter (run 20260801-030335--a1-playworld-sft--s42--e24d72).
+# Launch (Colab):
+#   python scripts/run_experiment.py \
+#     --config configs/experiments/a2_playworld_dpo.yaml \
+#     --parent-adapter-dir runs/<a1-run>/artifacts/final_adapter \
+#     --override data.source.local_path=data/train/playworld_preference.jsonl \
+#     --hf-sync-repo m97j/aw-runs-a2
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml   # carries the canonical BF16 LoRA adapter block
+
+experiment_name: a2-playworld-dpo
+track: track_a_direct
+phase: phase2_playworld
+objective: dpo
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  parent_adapter:
+    repo_id: m97j/aw-runs-a1
+    revision: main
+    sha256: "sha256:f84fb34da194da6b77b0936aea3ac1b8ab5f92532e9ea3eca5c313fb25528dcf"
+
+data:
+  source:
+    local_path: data/train/playworld_preference.jsonl
+
+training:
+  # DPO on an already-converged SFT policy: low LR, single epoch.
+  learning_rate: 5.0e-7
+  num_train_epochs: 1
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 4096
