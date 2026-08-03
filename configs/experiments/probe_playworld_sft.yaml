@@ -1,0 +1,36 @@
+# Transfer probe — fixed short PlayWorld SFT applied IDENTICALLY to every P1
+# candidate (protocol §6: Phase-1 champion primary metric = goal-valid action
+# accuracy of this probe on eval-ID). Budget is deliberately small and FROZEN:
+# 200 steps, LR 1e-5 — never tuned per candidate.
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: probe-playworld-sft
+track: track_b_two_stage
+phase: phase2_playworld
+objective: sft
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  # parent_adapter block is supplied per candidate at launch via --override:
+  #   --override lineage.parent_adapter.repo_id=<repo> \
+  #   --override lineage.parent_adapter.revision=main \
+  #   --override lineage.parent_adapter.sha256=sha256:<hash>
+  parent_adapter:
+    repo_id: OVERRIDE_ME
+    revision: main
+    sha256: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+data:
+  source:
+    local_path: data/train/playworld_sft.jsonl
+
+training:
+  learning_rate: 1.0e-5
+  max_length: 4096
+  max_steps: 200          # frozen probe budget — identical for all candidates
+  num_train_epochs: null
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8

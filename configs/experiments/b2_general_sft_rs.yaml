@@ -1,0 +1,27 @@
+# Track B — B2: Base -> Phase-1 general SFT on the rejection-sampled corpus
+# (protocol §5.1, RQ2 upstream arm). Identical recipe to B1 except the data
+# source: responses are base-model samples gated by ExactAnswerVerifier
+# (scripts/build_p1_rs_data.py), so B1 vs B2 isolates response provenance.
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: b2-general-sft-rs
+track: track_b_two_stage
+phase: phase1_general
+objective: sft
+
+lineage:
+  initialization_mode: from_base
+
+data:
+  source:
+    local_path: data/p1/p1_general_sft_rs.jsonl
+
+training:
+  learning_rate: 1.0e-5
+  max_length: 4096   # explicit: NEVER rely on TRL's 1024 default (A1 collapse root cause)
+  num_train_epochs: 2.0
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 8
