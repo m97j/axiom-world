@@ -57,7 +57,7 @@ def load_episode_scores(run_dir: Path, suite: str) -> dict[str, dict[str, float]
     if not path.exists():
         raise FileNotFoundError(f"missing evaluation output: {path}")
     episodes: dict[str, dict[str, float]] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").split("\n"):
         if not line.strip():
             continue
         record = json.loads(line)

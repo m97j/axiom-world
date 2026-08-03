@@ -69,3 +69,15 @@ def test_compare_runs_rejects_id_mismatch(tmp_path: Path) -> None:
 def test_load_episode_scores_missing_file(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_episode_scores(tmp_path, "eval_id")
+
+
+def test_read_jsonl_survives_u2028(tmp_path: Path) -> None:
+    """MATH solutions contain U+2028/U+2029; splitlines()-based readers break."""
+    from axiom_world.data.bundle import read_jsonl, write_jsonl
+
+    path = tmp_path / "records.jsonl"
+    rows = [{"id": "r0", "text": "line\u2028sep and \u2029 too"}, {"id": "r1", "text": "plain"}]
+    write_jsonl(path, rows)
+    loaded = read_jsonl(path)
+    assert [r["id"] for r in loaded] == ["r0", "r1"]
+    assert "\u2028" in loaded[0]["text"]

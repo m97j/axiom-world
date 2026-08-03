@@ -124,6 +124,21 @@ def build_data_bundle(
     return DataBundle(kind=kind, records=records, fingerprint=fingerprint, manifest=manifest)
 
 
+def read_jsonl(path: Path | str) -> list[dict[str, Any]]:
+    """Read JSONL splitting on '\n' ONLY.
+
+    Never use str.splitlines() for JSONL: records serialized with
+    ensure_ascii=False may contain literal U+2028/U+2029 (present in e.g.
+    MATH LaTeX solutions), which splitlines() treats as line breaks, cutting
+    records in half (JSONDecodeError: unterminated string).
+    """
+    return [
+        json.loads(line)
+        for line in Path(path).read_text(encoding="utf-8").split("\n")
+        if line.strip()
+    ]
+
+
 def write_jsonl(path: Path | str, records: Iterable[Any]) -> str:
     """Serialize records to JSONL and return the bundle fingerprint."""
     target = Path(path)

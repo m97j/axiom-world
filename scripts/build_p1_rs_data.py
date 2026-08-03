@@ -57,15 +57,14 @@ def main() -> int:
 
     config, _, _ = resolve(args.config, [])
     model, tokenizer = build_for_inference(config, adapter_dir=None)
+    tokenizer.padding_side = "left"  # decoder-only generation: right padding corrupts outputs
     opener_seed = config.evaluation.opener_seed
     verifier = ExactAnswerVerifier()
     torch.manual_seed(args.seed)
 
-    records = [
-        json.loads(line)
-        for line in Path(args.input).read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    from axiom_world.data.bundle import read_jsonl
+
+    records = read_jsonl(Path(args.input))
     if args.limit:
         records = records[: args.limit]
     verifiable = [r for r in records if r.get("metadata", {}).get("gold_answer")]
