@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiom-world"
-version = "0.6.1"
+version = "0.6.2"
 description = "Verifier-guided two-stage post-training framework — core contract layer"
 requires-python = ">=3.12"
 dependencies = [
@@ -32,6 +32,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "C4", "SIM", "PL"]
 ignore = [
     "PLC0415",  # Allow lazy-init
+    "PLR0912",  # Allow many branches
     "PLR0913",  # Allow many arguments
     "PLR0915",
     "PLR0917",

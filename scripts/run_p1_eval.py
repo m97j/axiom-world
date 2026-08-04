@@ -34,6 +34,7 @@ def main() -> int:
     parser.add_argument("--output", default=None)
     parser.add_argument("--hf-sync-repo", default=None,
                         help="HF MODEL repo; uploads under p1_eval/.")
+    parser.add_argument("--dump-predictions", default=None)
     args = parser.parse_args()
 
     import torch
@@ -53,6 +54,7 @@ def main() -> int:
 
     records = read_jsonl(Path(args.holdout))
     records = [r for r in records if r.get("metadata", {}).get("gold_answer")]
+    stats = {"truncated": 0}
 
     stop_ids = [tokenizer.eos_token_id]
     im_end = tokenizer.convert_tokens_to_ids("<|im_end|>")
@@ -76,12 +78,17 @@ def main() -> int:
             **inputs, max_new_tokens=args.max_new_tokens, do_sample=False,
             pad_token_id=tokenizer.pad_token_id, eos_token_id=stop_ids,
         )
-        return tokenizer.batch_decode(generated[:, prompt_len:], skip_special_tokens=True)
+        completions = generated[:, prompt_len:]
+        for row in completions:
+            if len(row) == args.max_new_tokens and not any(int(t) in stop_ids for t in row):
+                stats["truncated"] += 1
+        return tokenizer.batch_decode(completions, skip_special_tokens=True)
 
     from tqdm import tqdm
 
     outcomes: list[float] = []
     per_family: dict[str, list[float]] = {}
+    dump_rows = [] if args.dump_predictions else None
     for start in tqdm(range(0, len(records), args.batch_size), desc="p1-eval(batched)"):
         batch = records[start : start + args.batch_size]
         outputs = generate([r["messages"][0]["content"] for r in batch])
@@ -89,6 +96,14 @@ def main() -> int:
             verdict = verifier.verify(text.strip(), {"answer": record["metadata"]["gold_answer"]})
             value = 1.0 if verdict.status is VerificationStatus.PASSED else 0.0
             outcomes.append(value)
+            if dump_rows is not None:
+                dump_rows.append({
+                    "id": record.get("id"),
+                    "task_family": record.get("task_family", "unknown"),
+                    "prediction": text,
+                    "gold_answer": record["metadata"]["gold_answer"],
+                    "passed": value == 1.0,
+                })
             per_family.setdefault(record.get("task_family", "unknown"), []).append(value)
 
     mean, low, high = bootstrap_ci(outcomes)
@@ -102,10 +117,20 @@ def main() -> int:
             family: round(sum(v) / len(v), 4) for family, v in sorted(per_family.items())
         },
         "conditioning": {"opener_seed": opener_seed},
-        "decoding": {"max_new_tokens": args.max_new_tokens, "batch_size": args.batch_size},
+                "decoding": {
+            "max_new_tokens": args.max_new_tokens,
+            "batch_size": args.batch_size,
+            "truncated_outputs": stats["truncated"],
+        },
     }
     output = Path(args.output or f"runs/p1_eval_{args.label}.json")
     output.parent.mkdir(parents=True, exist_ok=True)
+    if dump_rows is not None:
+        dump_path = Path(args.dump_predictions)
+        dump_path.parent.mkdir(parents=True, exist_ok=True)
+        with dump_path.open("w", encoding="utf-8") as fh:
+            for row in dump_rows:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
     output.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(summary, indent=2, sort_keys=True))
 
