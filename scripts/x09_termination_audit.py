@@ -53,7 +53,7 @@ Three independent checks:
      the collated batch while pad_id == eos_id  =>  HYPOTHESIS T CONFIRMED.
 
 Usage (Colab, repo root, package installed as `axiom_world`):
-  python scripts/x09_termination_audit.py \
+  python x09_termination_audit.py \
       --run-dirs runs/<b1-probe-eval-run> runs/<b2-probe-eval-run> \
       --sft-config configs/experiments/b1_general_sft.yaml \
       --sft-jsonl data/p1/p1_general_train.jsonl \
@@ -128,6 +128,11 @@ def _tail_repetition(text: str, window: int = 32, lookback: int = 512) -> bool:
 
 
 def audit_run(run_dir: str) -> dict:
+    """NOTE (v0.6.2 fix): fetched run dirs can contain DUPLICATE copies of the
+    suite jsonl files (e.g. repo-root artifacts plus a nested runs/ copy — the
+    b1-probe fetch materialized 19 files vs 8 and produced 3000 trace rows for
+    a 1500-episode eval, halving the apparent truncation rate). Rows are now
+    deduplicated by (suite, id) so counts match the summary's episode count."""
     summary = None
     for candidate in sorted(
         glob.glob(os.path.join(run_dir, "**", "evaluation_summary.json"), recursive=True)
@@ -138,9 +143,15 @@ def audit_run(run_dir: str) -> dict:
 
     reason_codes: Counter[str] = Counter()
     suites: Counter[str] = Counter()
-    n = empty = runaway = 0
+    n = empty = runaway = duplicates = 0
+    seen: set[tuple[str, str]] = set()
     length_chars: list[int] = []
     for row in _iter_trace_rows(run_dir):
+        key = (str(row.get("suite")), str(row.get("id")))
+        if key in seen:
+            duplicates += 1
+            continue
+        seen.add(key)
         n += 1
         suites[str(row.get("suite"))] += 1
         text = row.get("prediction") or ""
@@ -157,6 +168,7 @@ def audit_run(run_dir: str) -> dict:
     report = {
         "run_dir": run_dir,
         "trace_rows": n,
+        "duplicate_rows_dropped": duplicates,
         "suites": dict(suites),
         "summary_found": summary is not None,
         # authoritative token-level stop signal (counted at generation time
