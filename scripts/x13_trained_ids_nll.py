@@ -168,15 +168,35 @@ def main() -> int:
         "mean_p_im_end_at_terminal": round(sum(stops) / len(stops), 6) if stops else None,
     }
     m = report["summary"]["mean_nll_over_samples"]
-    report["verdict"] = (
-        "no data" if m is None else
-        "LOW NLL on trained ids => adapter fine on ITS OWN rendering; the flat "
-        "distribution seen under apply_chat_template is a RENDERING MISMATCH "
-        "(hypothesis W) — align probe/eval prompt construction with the trained "
-        "rendering." if m < 1.5 else
-        "HIGH NLL on trained ids => adapter degenerate on its own training "
-        "data; audit checkpoint save/load and optimizer state."
-    )
+    stop_nlls = [
+        s["terminal_stop"]["nll"] for s in report["samples"] if s["terminal_stop"]
+    ]
+    stop_m = round(sum(stop_nlls) / len(stop_nlls), 4) if stop_nlls else None
+    report["summary"]["mean_terminal_stop_nll"] = stop_m
+    if m is None:
+        report["verdict"] = "no data"
+    elif m >= 1.5:
+        report["verdict"] = (
+            "HIGH NLL on trained ids => adapter degenerate on its own training "
+            "data; audit checkpoint save/load and optimizer state."
+        )
+    elif stop_m is not None and stop_m > 4.0:
+        report["verdict"] = (
+            "CONTENT LEARNED / TERMINAL STOP NOT LEARNED: low NLL on supervised "
+            "content tokens but the terminal <|im_end|> stays high-NLL — U1 "
+            "confirmed at token level. Rendering mismatch (hyp. W) is REJECTED "
+            "if these terminal stats match the apply_chat_template probe (x12). "
+            "Likely mechanism (hypothesis-K analogue): Qwen3-Base's <|im_end|> "
+            "lm_head/embedding row is untrained and attention/MLP-only LoRA "
+            "cannot lift a single vocab logit that far — consider adding "
+            "lm_head/embed_tokens to trainable modules or terminating training "
+            "targets with a token the base already prefers (<|endoftext|>)."
+        )
+    else:
+        report["verdict"] = (
+            "LOW NLL on content AND terminal stop — adapter fine on its own "
+            "rendering; if generation still fails to stop, inspect decoding."
+        )
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
