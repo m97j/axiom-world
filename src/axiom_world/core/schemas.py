@@ -68,6 +68,11 @@ class AdapterConfig(StrictModel):
     alpha: int = 32
     dropout: float = 0.05
     target_modules: list[str] = Field(default_factory=list)
+    # x13 finding (v0.6.3): Qwen3-Base's <|im_end|> lm_head/embedding rows are
+    # untrained; attention/MLP-only LoRA cannot lift the terminal stop logit
+    # (p ~= 4e-4 after 2 epochs). These modules are fully fine-tuned and saved
+    # alongside the LoRA weights (PEFT `modules_to_save`).
+    modules_to_save: list[str] = Field(default_factory=list)
 
 
 class ParentAdapterRef(StrictModel):

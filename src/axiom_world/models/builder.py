@@ -95,6 +95,7 @@ def build_model_and_tokenizer(
             lora_alpha=config.adapter.alpha,
             lora_dropout=config.adapter.dropout,
             target_modules=config.adapter.target_modules or None,
+            modules_to_save=config.adapter.modules_to_save or None,
             task_type="CAUSAL_LM",
         )
         model = get_peft_model(model, lora)

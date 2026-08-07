@@ -75,18 +75,18 @@ headline claim is scoped to RQ1's outcome, whichever direction it falls.
 All canonical runs execute on the following runtime. Runs on any other
 configuration are labeled `exploratory` and excluded from main tables.
 
-| Layer                                       | Frozen value                                                                                                                                              |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Platform                                    | Google Colab Pro+ G4                                                                                                                                      |
-| GPU                                         | NVIDIA RTX PRO 6000 Blackwell Server Edition, 94.97 GB VRAM, CC 12.0                                                                                      |
-| OS / Python                                 | Ubuntu 22.04.5 LTS / Python 3.12.13                                                                                                                       |
-| PyTorch / CUDA                              | 2.11.0+cu128 / 12.8 —**provided by the Colab image; never reinstalled**                                                                            |
-| Transformers / PEFT / Accelerate / Datasets | 5.13.1 / 0.19.1 / 1.14.0 / 4.0.0 (Colab-image versions, pinned)                                                                                           |
-| TRL                                         | 1.9.x — exact pin frozen after the import-gate + tiny-run smoke test (§10, Gate G1); recorded in`requirements/colab-g4.lock.txt`                      |
-| Attention backend                           | **SDPA (canonical)**. FlashAttention-2 appears only in the attention benchmark (§5.3, E-ATTN) and never in canonical result runs. FA3 is not used. |
-| Precision / adapter                         | **BF16 LoRA (canonical)**. QLoRA NF4 appears only in ablation E-QLORA.                                                                              |
-| Generation for data construction            | vLLM in a dedicated generation session; never co-located with training                                                                                    |
-| Tracking                                    | W&B + local JSONL event logs (both mandatory; local logs are authoritative)                                                                               |
+| Layer | Frozen value |
+|---|---|
+| Platform | Google Colab Pro+ G4 |
+| GPU | NVIDIA RTX PRO 6000 Blackwell Server Edition, 94.97 GB VRAM, CC 12.0 |
+| OS / Python | Ubuntu 22.04.5 LTS / Python 3.12.13 |
+| PyTorch / CUDA | 2.11.0+cu128 / 12.8 — **provided by the Colab image; never reinstalled** |
+| Transformers / PEFT / Accelerate / Datasets | 5.13.1 / 0.19.1 / 1.14.0 / 4.0.0 (Colab-image versions, pinned) |
+| TRL | 1.9.x — exact pin frozen after the import-gate + tiny-run smoke test (§10, Gate G1); recorded in `requirements/colab-g4.lock.txt` |
+| Attention backend | **SDPA (canonical)**. FlashAttention-2 appears only in the attention benchmark (§5.3, E-ATTN) and never in canonical result runs. FA3 is not used. |
+| Precision / adapter | **BF16 LoRA (canonical)**. QLoRA NF4 appears only in ablation E-QLORA. |
+| Generation for data construction | vLLM in a dedicated generation session; never co-located with training |
+| Tracking | W&B + local JSONL event logs (both mandatory; local logs are authoritative) |
 
 Every run records `environment_manifest.json` (package versions, GPU, driver,
 audit output of `scripts/audit_runtime.py`). A canonical run whose manifest
@@ -98,10 +98,10 @@ deviates from this table is invalidated.
 
 ### 4.1 Models (frozen)
 
-| Role                                | Model                                                     | Revision policy                                                      |
-| ----------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
-| Primary initialization              | `Qwen/Qwen3-8B-Base`                                    | Exact HF revision hash recorded at first download; frozen thereafter |
-| Strong reference baseline (Track C) | Official`Qwen/Qwen3-8B` (instruct/reasoning checkpoint) | Same policy;**evaluation only, never fine-tuned**              |
+| Role | Model | Revision policy |
+|---|---|---|
+| Primary initialization | `Qwen/Qwen3-8B-Base` | Exact HF revision hash recorded at first download; frozen thereafter |
+| Strong reference baseline (Track C) | Official `Qwen/Qwen3-8B` (instruct/reasoning checkpoint) | Same policy; **evaluation only, never fine-tuned** |
 
 No other model family is used in canonical experiments. A single optional
 transfer-validation run on a larger checkpoint (≤14B) may be added **only
@@ -109,12 +109,12 @@ after** all canonical results are complete, labeled `exploratory`.
 
 ### 4.2 Datasets
 
-| Dataset                                                | Role                      | Freeze rule                                                                                       |
-| ------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------- |
-| `axiom-general-posttrain` (P1 SFT + P1 preference)   | Phase 1 training          | Fingerprinted (SHA-256 per split) before first P1 run                                             |
-| `axiom-playworld` train (SFT / preference / prompts) | Phase 2 training          | Fingerprinted before first P2 run                                                                 |
-| `axiom-playworld` eval suites (§7.2)                | All evaluation            | **Frozen before any training run. Never regenerated. Never used in any training pipeline.** |
-| Verifier golden fixtures                               | Verifier regression tests | Frozen at Gate G2 (§10)                                                                          |
+| Dataset | Role | Freeze rule |
+|---|---|---|
+| `axiom-general-posttrain` (P1 SFT + P1 preference) | Phase 1 training | Fingerprinted (SHA-256 per split) before first P1 run |
+| `axiom-playworld` train (SFT / preference / prompts) | Phase 2 training | Fingerprinted before first P2 run |
+| `axiom-playworld` eval suites (§7.2) | All evaluation | **Frozen before any training run. Never regenerated. Never used in any training pipeline.** |
+| Verifier golden fixtures | Verifier regression tests | Frozen at Gate G2 (§10) |
 
 Data lineage: every training record carries `provenance` (source dataset,
 revision, transformation version/hash) per `docs/data-contract.md`.
@@ -216,13 +216,13 @@ used.
 
 ### Stage 1 — Hard constraints (must all pass)
 
-| Constraint                                                                                         | Threshold              |
-| -------------------------------------------------------------------------------------------------- | ---------------------- |
-| JSON/schema validity rate (eval-ID)                                                                | ≥ 0.95                |
-| Legal action rate (eval-ID)                                                                        | ≥ 0.90                |
-| General-capability retention (P1 general held-out vs Base)                                         | drop ≤ 3 pts absolute |
-| Reward-hacking incidence (adversarial suite, verifier-audited)                                     | ≤ 2% of episodes      |
-| Catastrophic failure (loss divergence, output collapse, degenerate repetition >5% of eval outputs) | none                   |
+| Constraint | Threshold |
+|---|---|
+| JSON/schema validity rate (eval-ID) | ≥ 0.95 |
+| Legal action rate (eval-ID) | ≥ 0.90 |
+| General-capability retention (P1 general held-out vs Base) | drop ≤ 3 pts absolute |
+| Reward-hacking incidence (adversarial suite, verifier-audited) | ≤ 2% of episodes |
+| Catastrophic failure (loss divergence, output collapse, degenerate repetition >5% of eval outputs) | none |
 
 Checkpoints failing any constraint are ineligible regardless of other scores.
 
@@ -251,17 +251,17 @@ candidates), evaluated on eval-ID.
 
 ### 7.1 Metric definitions (all computed by the frozen evaluator, version-pinned)
 
-| Metric                                         | Definition                                                                                                                                        |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Goal-valid action accuracy** (primary) | Fraction of episodes in which every emitted action is legal under the transition engine**and** the final state satisfies the goal predicate |
-| JSON validity rate                             | Parseable, schema-conformant outputs / total                                                                                                      |
-| Legal action rate                              | Legal actions / total actions (per-action)                                                                                                        |
-| State consistency rate                         | Steps without contradiction against tracked world state / total steps                                                                             |
-| Multi-step completion                          | Goal achieved within the episode step limit                                                                                                       |
-| Reward-hacking incidence                       | Verifier-passed episodes flagged by adversarial audit rules / total                                                                               |
-| General retention                              | Score on the frozen P1 general held-out suite                                                                                                     |
-| Mean / p95 latency, tokens per decision        | Measured under the canonical decoding profile                                                                                                     |
-| Cost per valid sample                          | GPU-seconds / verifier-passed sample (training-time metric)                                                                                       |
+| Metric | Definition |
+|---|---|
+| **Goal-valid action accuracy** (primary) | Fraction of episodes in which every emitted action is legal under the transition engine **and** the final state satisfies the goal predicate |
+| JSON validity rate | Parseable, schema-conformant outputs / total |
+| Legal action rate | Legal actions / total actions (per-action) |
+| State consistency rate | Steps without contradiction against tracked world state / total steps |
+| Multi-step completion | Goal achieved within the episode step limit |
+| Reward-hacking incidence | Verifier-passed episodes flagged by adversarial audit rules / total |
+| General retention | Score on the frozen P1 general held-out suite |
+| Mean / p95 latency, tokens per decision | Measured under the canonical decoding profile |
+| Cost per valid sample | GPU-seconds / verifier-passed sample (training-time metric) |
 
 ### 7.2 Evaluation suites
 
@@ -321,14 +321,14 @@ are excluded from reward computation and reported separately.
 
 ## 9. Compute Budget Allocation (planning targets)
 
-| Area                                          | Share of GPU budget |
-| --------------------------------------------- | ------------------: |
-| Runtime hardening + smoke runs (Gate G1)      |                  5% |
-| Phase 1 (B1–B3)                              |                 20% |
-| Direct-vs-two-stage transfer (A1–A2, B4–B5) |                 20% |
-| Phase 2 GRPO + ablations (B6, E-*)            |                 30% |
-| 3-seed final confirmation                     |                 15% |
-| Evaluation, E-ATTN, LogosP inference study    |                 10% |
+| Area | Share of GPU budget |
+|---|---:|
+| Runtime hardening + smoke runs (Gate G1) | 5% |
+| Phase 1 (B1–B3) | 20% |
+| Direct-vs-two-stage transfer (A1–A2, B4–B5) | 20% |
+| Phase 2 GRPO + ablations (B6, E-*) | 30% |
+| 3-seed final confirmation | 15% |
+| Evaluation, E-ATTN, LogosP inference study | 10% |
 
 If budget runs short, cut in this order: E-QLORA → E-ATTN long-seq points →
 E-RULE → LogosP policy breadth. **Never** cut: the 3-seed final set, the
@@ -342,14 +342,14 @@ Experiments proceed only through ordered gates. A gate failure stops forward
 progress until resolved; resolutions touching this protocol require an
 amendment entry.
 
-| Gate                           | Content                                                                                                                                  | Pass condition                                          |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **G1** Runtime hardening | TRL import-gate, Qwen3-8B load, BF16 LoRA forward/backward, tiny SFT/DPO/GRPO (≤20 steps), checkpoint save→kill→resume, HF round-trip | All smoke tests green on the canonical runtime          |
-| **G2** Verifier freeze   | Golden fixture suite (pass/fail/malformed/illegal/hacking/timeout/indeterminate)                                                         | 100% expected-status agreement; verifier version tagged |
-| **G3** Data freeze       | All eval suites generated, fingerprinted, contamination report clean                                                                     | Hashes committed; no further edits allowed              |
-| **G4** Baselines         | C1/C2 and A1 evaluated                                                                                                                   | Results tables populated with CIs                       |
-| **G5** Main tracks       | B-track complete through B6                                                                                                              | Champion selected per §6                               |
-| **G6** Final             | 3-seed confirmation + ablations                                                                                                          | Report numbers frozen                                   |
+| Gate | Content | Pass condition |
+|---|---|---|
+| **G1** Runtime hardening | TRL import-gate, Qwen3-8B load, BF16 LoRA forward/backward, tiny SFT/DPO/GRPO (≤20 steps), checkpoint save→kill→resume, HF round-trip | All smoke tests green on the canonical runtime |
+| **G2** Verifier freeze | Golden fixture suite (pass/fail/malformed/illegal/hacking/timeout/indeterminate) | 100% expected-status agreement; verifier version tagged |
+| **G3** Data freeze | All eval suites generated, fingerprinted, contamination report clean | Hashes committed; no further edits allowed |
+| **G4** Baselines | C1/C2 and A1 evaluated | Results tables populated with CIs |
+| **G5** Main tracks | B-track complete through B6 | Champion selected per §6 |
+| **G6** Final | 3-seed confirmation + ablations | Report numbers frozen |
 
 **Run-level stopping rules**: a training run is aborted and marked `failed`
 (not silently retried with new hyperparameters) if loss diverges (NaN/Inf),
@@ -397,9 +397,10 @@ review by making all decision rules public and time-stamped in git history.
 
 ## 13. Amendment Log
 
-| Version | Date       | Section | Change                                                                                                                                                                                                                                                                                   | Rationale                                                                                                                                                                                                                                                                                                                                                                  |
-| ------- | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v1.0    | 2026-07-23 | —      | Initial freeze                                                                                                                                                                                                                                                                           | —                                                                                                                                                                                                                                                                                                                                                                         |
-| v1.1    | 2026-08-02 | §7.3   | Prompt conditioning matches each model's training-time rendering; conditioning promoted to a pre-declared`evaluation:` config block (`opener_seed`, `few_shot_k`, `few_shot_exemplars_path`) recorded in run artifacts; empty-think opener seeded for Base-initialized adapters. | A1 failure analysis (e01–e08): Qwen3-Base's untrained think-opener tokens under attention/MLP LoRA made the unseeded eval measure a harness artifact (93% malformed-JSON collapse), not capability. Suites/verifier/decoding stay fixed; the rule "condition each model to its own training distribution" is applied uniformly across tracks, preserving fair comparison. |
+| Version | Date | Section | Change | Rationale |
+|---|---|---|---|---|
+| v1.0 | 2026-07-23 | — | Initial freeze | — |
+| v1.1 | 2026-08-02 | §7.3 | Prompt conditioning matches each model's training-time rendering; conditioning promoted to a pre-declared `evaluation:` config block (`opener_seed`, `few_shot_k`, `few_shot_exemplars_path`) recorded in run artifacts; empty-think opener seeded for Base-initialized adapters. | A1 failure analysis (e01–e08): Qwen3-Base's untrained think-opener tokens under attention/MLP LoRA made the unseeded eval measure a harness artifact (93% malformed-JSON collapse), not capability. Suites/verifier/decoding stay fixed; the rule "condition each model to its own training distribution" is applied uniformly across tracks, preserving fair comparison. |
+| v1.2 | 2026-08-06 | §5.1, adapter contract | B1/B2 SFT arms re-run as B1'/B2' with `adapter.modules_to_save: [lm_head, embed_tokens]` (new AdapterConfig field); original B1/B2 runs retained as negative results. | Termination failure audit (x09–x13): terminal `<|im_end|>` labels are LIVE in the collated batch (hypothesis T rejected) and the trained rendering equals the eval rendering (hypothesis W rejected), yet both arms show 100% truncation. Token-level NLL replay isolates the mechanism: content NLL drops 1.26→0.38/0.55 while terminal-stop NLL stays 7.9/12.7 (base 21.6) — Qwen3-Base's `<|im_end|>` head/embedding rows are untrained and attention/MLP-only LoRA cannot lift a single vocab logit sufficiently (hypothesis-K analogue). Decoding, suites, verifiers, and data are unchanged; the fix widens the trainable set only. |
 
 <!-- Append amendments above. Never edit v1.0 in place. -->

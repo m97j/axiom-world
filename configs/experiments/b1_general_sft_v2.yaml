@@ -1,0 +1,18 @@
+# Track B — B1': B1 recipe + trainable lm_head/embed_tokens (protocol §13 v1.2)
+#
+# Single-variable change vs b1_general_sft.yaml: adapter.modules_to_save.
+# Motivation (x09b/x10/x12/x13 audit chain): content is learned (NLL 1.26->0.38
+# vs base) but the terminal <|im_end|> stays unlearned (NLL 21.6->7.9,
+# p ~= 3.6e-4) because Qwen3-Base's <|im_end|> head/embedding rows are
+# untrained and attn/MLP-only LoRA cannot express the required logit lift ->
+# 100% truncation in probe evals. Full-tuning lm_head + embed_tokens gives the
+# optimizer direct access to those rows.
+extends:
+  - b1_general_sft.yaml
+
+experiment_name: b1-general-sft-v2
+
+adapter:
+  modules_to_save:
+    - lm_head
+    - embed_tokens

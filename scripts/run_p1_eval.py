@@ -34,7 +34,8 @@ def main() -> int:
     parser.add_argument("--output", default=None)
     parser.add_argument("--hf-sync-repo", default=None,
                         help="HF MODEL repo; uploads under p1_eval/.")
-    parser.add_argument("--dump-predictions", default=None)
+    parser.add_argument("--dump-predictions", default=None,
+                        help="optional per-row predictions jsonl (x09 check B input)")
     args = parser.parse_args()
 
     import torch
@@ -54,12 +55,13 @@ def main() -> int:
 
     records = read_jsonl(Path(args.holdout))
     records = [r for r in records if r.get("metadata", {}).get("gold_answer")]
-    stats = {"truncated": 0}
 
     stop_ids = [tokenizer.eos_token_id]
     im_end = tokenizer.convert_tokens_to_ids("<|im_end|>")
     if im_end is not None and im_end != tokenizer.eos_token_id:
         stop_ids.append(im_end)
+
+    stats = {"truncated": 0}
 
     @torch.no_grad()
     def generate(prompts: list[str]) -> list[str]:
@@ -79,8 +81,9 @@ def main() -> int:
             pad_token_id=tokenizer.pad_token_id, eos_token_id=stop_ids,
         )
         completions = generated[:, prompt_len:]
-        for row in completions:
-            if len(row) == args.max_new_tokens and not any(int(t) in stop_ids for t in row):
+        for row_ids in completions:
+            row_list = [int(t) for t in row_ids]
+            if len(row_list) == args.max_new_tokens and not any(t in stop_ids for t in row_list):
                 stats["truncated"] += 1
         return tokenizer.batch_decode(completions, skip_special_tokens=True)
 
@@ -88,7 +91,7 @@ def main() -> int:
 
     outcomes: list[float] = []
     per_family: dict[str, list[float]] = {}
-    dump_rows = [] if args.dump_predictions else None
+    dump_rows: list[dict] | None = [] if args.dump_predictions else None
     for start in tqdm(range(0, len(records), args.batch_size), desc="p1-eval(batched)"):
         batch = records[start : start + args.batch_size]
         outputs = generate([r["messages"][0]["content"] for r in batch])
@@ -117,7 +120,7 @@ def main() -> int:
             family: round(sum(v) / len(v), 4) for family, v in sorted(per_family.items())
         },
         "conditioning": {"opener_seed": opener_seed},
-                "decoding": {
+        "decoding": {
             "max_new_tokens": args.max_new_tokens,
             "batch_size": args.batch_size,
             "truncated_outputs": stats["truncated"],
