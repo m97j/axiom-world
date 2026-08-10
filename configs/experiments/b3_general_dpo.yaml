@@ -1,0 +1,41 @@
+# B3 — Track B: P1 general DPO on exact-answer-mined pairs (protocol §5.1, §6).
+# Parent: the Phase-1 SFT champion = B1v2
+#   run 20260807-225109--b1-general-sft-v2--s42--e6e83b (m97j/aw-runs-b1).
+# Champion selection record (2026-08-10, §6 three-stage on the V2 probes):
+#   transfer proxy eval-ID pass_rate 0.2567 (b1v2) vs 0.2500 (b2v2), p=0.88 tie
+#   -> rule-OOD 0.1933 vs 0.2100, p=0.61 tie
+#   -> GPU-hours: B1 needs no RS generation pass -> champion = B1v2.
+# Adapter geometry (incl. modules_to_save=[lm_head, embed_tokens]) is inherited
+# from the parent via continue_training_existing_adapter; DPO updates the same
+# trainable set, keeping the learned stop-token behavior in-policy.
+# Launch (Colab):
+#   python scripts/run_experiment.py \
+#     --config configs/experiments/b3_general_dpo.yaml \
+#     --parent-adapter-dir runs/<b1v2-run>/artifacts/final_adapter \
+#     --override lineage.parent_adapter.sha256=<from lineage.json> \
+#     --override data.source.local_path=data/p1/p1_general_preference.jsonl \
+#     --hf-sync-repo m97j/aw-runs-b3
+extends:
+  - b1_general_sft_v2.yaml
+
+experiment_name: b3-general-dpo
+objective: dpo
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  parent_adapter:
+    repo_id: m97j/aw-runs-b1
+    revision: main
+    sha256: ""   # REQUIRED at launch: output_adapter_sha256 from the b1v2 lineage.json
+
+data:
+  source:
+    local_path: data/p1/p1_general_preference.jsonl
+
+training:
+  # DPO on an already-converged SFT policy: low LR, single epoch (a2 profile).
+  learning_rate: 5.0e-7
+  num_train_epochs: 1
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 4096

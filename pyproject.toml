@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiom-world"
-version = "0.6.4"
+version = "0.6.5"
 description = "Verifier-guided two-stage post-training framework — core contract layer"
 requires-python = ">=3.12"
 dependencies = [
@@ -46,4 +46,4 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "src/axiom_world/runtime/audit.py" = ["BLE001", "S110"]
 "src/axiom_world/core/schemas.py" = ["SIM102"]
-"notebooks/*" = ["B018", "E402", "E501", "F401", "F403", "F405", "F811", "F821", "F841", "I001", "SIM115"]
+"notebooks/*" = ["B018", "E402", "E501", "E741", "F401", "F403", "F405", "F811", "F821", "F841", "I001", "SIM115"]
