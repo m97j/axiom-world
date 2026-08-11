@@ -26,7 +26,7 @@ lineage:
   parent_adapter:
     repo_id: m97j/aw-runs-b1
     revision: main
-    sha256: ""   # REQUIRED at launch: output_adapter_sha256 from the b1v2 lineage.json
+    sha256: "sha256:747e57574f811274d34852f8347c47c2ff90a86186f616f796856c7f01cae21d"
 
 data:
   source:
