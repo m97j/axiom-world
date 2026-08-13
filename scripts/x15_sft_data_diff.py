@@ -20,7 +20,7 @@ This tool decides which of two verdicts holds, WITHOUT a model:
      A1-era artifact fetched from HF.
 
 Usage (CPU):
-  python scripts/fetch_dataset.py --repo m97j/aw_playworld \
+  python scripts/fetch_dataset.py --repo m97j/aw-playworld \
       --path preference_train/v1/playworld_sft.jsonl \
       --output data/frozen/playworld_sft_a1era.jsonl
   python scripts/x15_sft_data_diff.py \
