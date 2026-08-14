@@ -1,0 +1,52 @@
+# B6 — Track B: PlayWorld GRPO from the Phase-2 SFT champion (protocol §5.1).
+# Parent: B4v2 (run 20260814-023603--b4v2-playworld-sft-from-p1--s42--c56ed2,
+# adapter sha256:d4fcacdd...). Champion record (§6, 2026-08-14): B5 (DPO) vs
+# B4v2 proxy tie on all primaries (only sig cell: adversarial pass -.037 for
+# B5) -> rule-OOD tie -> GPU-hours -> champion stays B4v2; GRPO therefore
+# initializes from the SFT champion, giving a clean B6-vs-B5 comparison
+# (online RL vs offline preference from the SAME parent).
+# Rewards: verifier_reward_function(default_playworld_verifier) — online,
+# episode-level, same verifier as eval (no reward-model drift).
+# Launch (Colab):
+#   python scripts/run_experiment.py \
+#     --config configs/experiments/b6_playworld_grpo.yaml \
+#     --parent-adapter-dir runs/<b4v2-run>/artifacts/final_adapter \
+#     --override lineage.parent_adapter.sha256=<b4v2 sha> \
+#     --override data.source.local_path=data/train/playworld_prompts.jsonl \
+#     --hf-sync-repo m97j/aw-runs-b6
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: b6-playworld-grpo
+track: track_b_two_stage
+phase: phase2_playworld
+objective: grpo
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  parent_run_id: null   # override at launch
+  parent_adapter:
+    repo_id: m97j/aw-runs-b4
+    revision: main
+    sha256: ""   # REQUIRED at launch
+
+data:
+  source:
+    local_path: data/train/playworld_prompts.jsonl
+
+training:
+  # Conservative single-GPU GRPO budget (~500 prompts x 8 rollouts):
+  # comparable optimizer-step count to the DPO arms.
+  learning_rate: 1.0e-6
+  num_train_epochs: 1
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 4096
+  extra:
+    num_generations: 8
+    max_prompt_length: 2048
+    max_completion_length: 768
+    temperature: 0.8
+    top_p: 0.95
