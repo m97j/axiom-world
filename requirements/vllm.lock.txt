@@ -1,4 +1,24 @@
-# OPTIONAL — dedicated generation session ONLY (never alongside training).
-# Validate Blackwell (sm_120) compatibility on the actual Colab G4 runtime
-# before freezing an exact pin.
-vllm>=0.10,<1.0
+# vLLM lock — B6 colocated GRPO rollouts (TRL use_vllm=true, protocol §7.4).
+#
+# HARD RULE (2026-08-16 incident): this file must contain an EXACT `vllm==`
+# pin that is ABI-clean against the Colab G4 image-owned layer
+# (torch/torchvision/torchaudio/triton/nvidia-*). A floating range here let
+# pip resolve vllm 0.27.1, which replaced torch 2.11.0+cu128 with
+# torch 2.13.0+cu13x while torchaudio stayed cu128 -> Qwen3 import failure.
+#
+# Workflow to (re)pin — never guess a version:
+#   1. fresh G4 runtime, install colab-g4.lock.txt only
+#   2. python scripts/x18_vllm_compat_probe.py --out runs/x18_vllm_probe.json
+#      -> newest candidate whose pip dry-run report touches NO ABI package
+#   3. rerun with --install --model Qwen/Qwen3-8B to smoke-test + benchmark
+#   4. write the reported `lock_line` below and commit with the x18 JSON
+#
+# Baseline this pin must respect (G4 image, verified 2026-08-16):
+#   torch 2.11.0+cu128 / torchvision 0.26.0+cu128 / torchaudio 2.11.0+cu128
+#   RTX PRO 6000 Blackwell (SM 12.0), driver CUDA 13.0
+#
+# PIN PENDING x18 PROBE — intentionally no version line yet. The aw_09_b6
+# header install step is gated on an exact `vllm==` line being present, so
+# an unpinned file is skipped (HF-generate fallback) instead of breaking ABI.
+# After x18 PASS, replace this comment block's placeholder with, e.g.:
+# vllm==<newest_abi_clean_candidate from runs/x18_vllm_probe.json>
