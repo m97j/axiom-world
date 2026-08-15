@@ -14,6 +14,11 @@
 #     --override lineage.parent_adapter.sha256=<b4v2 sha> \
 #     --override data.source.local_path=data/train/playworld_prompts.jsonl \
 #     --hf-sync-repo m97j/aw-runs-b6
+# Resume after an interrupted session (same command + --resume-from hub):
+#   HFCheckpointSync pushes checkpoint-N to m97j/aw-runs-b6 on every save;
+#   --resume-from hub restores the newest one (or starts fresh if none).
+#   save_steps=50 below bounds the loss window to <=50 optimizer steps
+#   (~10% of the ~500-step B6 budget; default 200 was too coarse for GRPO).
 extends:
   - ../base/project.yaml
   - ../base/runtime_colab_g4.yaml
@@ -40,12 +45,23 @@ training:
   # Conservative single-GPU GRPO budget (~500 prompts x 8 rollouts):
   # comparable optimizer-step count to the DPO arms.
   learning_rate: 1.0e-6
+  save_steps: 50
   num_train_epochs: 1
   per_device_batch_size: 1
   gradient_accumulation_steps: 8
   max_length: 4096
   extra:
     num_generations: 8
+    # vLLM colocated rollouts (v0.6.12): generation was the bottleneck of the
+    # aborted 2026-08-15 run (~17h projected on HF generate). Colocate mode
+    # shares the training GPU (96GB Blackwell has ample headroom for an 8B
+    # LoRA policy + 0.3-fraction KV cache). Requires `pip install -r
+    # requirements/vllm.lock.txt` in the runtime BEFORE launch; if the
+    # Blackwell/vLLM install fails, set use_vllm=false via --override and
+    # accept slow rollouts — correctness is unaffected.
+    use_vllm: true
+    vllm_mode: colocate
+    vllm_gpu_memory_utilization: 0.3
     max_prompt_length: 2048
     max_completion_length: 768
     temperature: 0.8
