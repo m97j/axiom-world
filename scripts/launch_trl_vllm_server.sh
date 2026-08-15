@@ -38,7 +38,9 @@ grep -Eq '^(vllm|trl)==' "$LOCK" || {
 if [ ! -x "$VENV/bin/python" ]; then
   echo "[launch] creating isolated venv at $VENV"
   pip install --quiet uv
-  uv venv "$VENV" --python 3.11
+  # Python 3.12+: matches the project's requires-python AND avoids the
+  # flashinfer `array.array[int]` TypeError seen on 3.11 (2026-08-15 smoke).
+  uv venv "$VENV" --python 3.12
   uv pip install --python "$VENV/bin/python" -r "$LOCK"
 fi
 
