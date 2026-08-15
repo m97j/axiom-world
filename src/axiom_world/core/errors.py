@@ -24,3 +24,14 @@ class RunContractError(AxiomError):
 
 class EnvironmentError_(AxiomError):
     """Canonical runtime environment contract violation (protocol §3)."""
+
+
+class RewardHealthError(AxiomError):
+    """Online-RL reward stream is degenerate (protocol §7.4 fail-fast guard).
+
+    Raised when the excluded (None-reward) fraction stays above threshold
+    after a minimum number of reward calls — e.g. the 2026-08-15 B6 incident
+    where Arrow struct unification injected None into nested scenario dicts
+    and every completion became INFRA_ERROR, silently zeroing all gradients
+    for 17 hours. Failing fast converts that silent waste into a hard error.
+    """

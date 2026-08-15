@@ -38,10 +38,27 @@ def to_dpo_rows(bundle: DataBundle) -> list[dict[str, Any]]:
 
 
 def to_grpo_rows(bundle: DataBundle) -> list[dict[str, Any]]:
-    """EvaluationRecord/prompt bundle -> {'prompt', 'scenario'} rows for GRPO rollouts."""
+    """EvaluationRecord/prompt bundle -> {'prompt', 'scenario_json'} rows for GRPO rollouts.
+
+    The scenario is serialized to a JSON STRING, never a nested dict. HF
+    datasets' Arrow backend unifies nested dicts across rows into one struct
+    schema and silently injects None for keys absent in a given row (variable
+    key maps like goal.resources). Those Nones fail Scenario.model_validate
+    inside the verifier -> INFRA_ERROR -> reward None for every completion
+    (2026-08-15 B6 incident: 17h at grad_norm 0). A string column is an
+    opaque scalar to Arrow, so the payload round-trips byte-exactly; the
+    reward bridge json.loads() it back (see reward_bridge.verifier_reward_function).
+    """
+    import json
+
     _require(bundle, "evaluation")
     rows: list[dict[str, Any]] = []
     for record in bundle.records:
         prompt_text = "\n".join(m.content for m in record.prompt)
-        rows.append({"prompt": prompt_text, "scenario": record.scenario})
+        rows.append(
+            {
+                "prompt": prompt_text,
+                "scenario_json": json.dumps(record.scenario, ensure_ascii=False, sort_keys=True),
+            }
+        )
     return rows
