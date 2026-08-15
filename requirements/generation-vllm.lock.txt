@@ -1,0 +1,30 @@
+# Isolated generation/rollout environment lock — vLLM SERVER mode (protocol §3).
+#
+# PURPOSE. This env is NEVER installed into the training runtime. It lives in
+# its own virtualenv (see scripts/launch_trl_vllm_server.sh) so vLLM may pin
+# whatever torch/CUDA stack it ships with — the 2026-08-16 x18 probe proved
+# (50/50 candidates, runs/x18_vllm_probe.json) that EVERY vLLM release pins
+# its own exact torch, so no vLLM can ever coexist with the image-owned
+# training ABI (torch 2.11.0+cu128). Environment separation is therefore the
+# only correct integration, not a workaround.
+#
+# CONSUMERS.
+#   - TRL GRPO server mode: training config sets
+#       training.extra.use_vllm: true
+#       training.extra.vllm_mode: server
+#       training.extra.vllm_server_base_url: http://127.0.0.1:8000
+#     while `trl vllm-serve` runs from THIS env in a separate process.
+#   - generation/backend.py VLLMBackend (RS data construction sessions).
+#
+# PIN RULES.
+#   - Exact `==` pins only. No ranges (0.27.1 incident).
+#   - vllm and trl must be pinned TOGETHER: `trl vllm-serve` runs inside this
+#     env and the client/server protocol must match the training env's trl.
+#     Keep trl== identical to the version in colab-g4.lock.txt.
+#   - Repin procedure: fresh throwaway runtime -> install this file ->
+#     `trl vllm-serve --model Qwen/Qwen3-8B` smoke + one client handshake ->
+#     commit the working pins with the smoke log.
+#
+# PIN PENDING first server-mode smoke (B6-B track). Fill in, e.g.:
+# vllm==0.11.0
+# trl==<same as colab-g4.lock.txt>

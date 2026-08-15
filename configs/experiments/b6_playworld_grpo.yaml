@@ -59,8 +59,17 @@ training:
     # requirements/vllm.lock.txt` in the runtime BEFORE launch; if the
     # Blackwell/vLLM install fails, set use_vllm=false via --override and
     # accept slow rollouts — correctness is unaffected.
-    use_vllm: true
-    vllm_mode: colocate
+    # x18 verdict (runs/x18_vllm_probe.json, 2026-08-16): NO vLLM release is
+    # ABI-clean against the image-owned torch 2.11.0+cu128 — every release
+    # pins its own torch — so colocate (same-env) vLLM is impossible on this
+    # image. Default = HF generate (use_vllm: false). The supported
+    # accelerated path is SERVER mode with an isolated env (B6-B track):
+    #   bash scripts/launch_trl_vllm_server.sh Qwen/Qwen3-8B 8000
+    #   --override training.extra.use_vllm=true \
+    #   --override training.extra.vllm_mode=server \
+    #   --override training.extra.vllm_server_base_url=http://127.0.0.1:8000
+    use_vllm: false
+    vllm_mode: server
     vllm_gpu_memory_utilization: 0.3
     max_prompt_length: 2048
     max_completion_length: 768
