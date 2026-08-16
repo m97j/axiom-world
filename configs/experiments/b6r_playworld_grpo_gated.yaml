@@ -1,0 +1,75 @@
+# B6-R — Track B: PlayWorld GRPO retry with PASS-GATED reward (protocol §7.4
+# amendment, post-x19).
+#
+# WHY THIS ARM EXISTS. B6 (aggregate reward) trained cleanly (reward 0->~0.6,
+# no termination pathology, healthy entropy) yet REGRESSED pass_rate vs its
+# own parent on every frozen suite (ID -14.0pp, template -14.0pp, comp -8.7pp,
+# adversarial -10.3pp; all significant) while mean_score stayed ~flat.
+# x19 (runs/x19_b6_regression_diag.json) localized the mechanism: of the
+# parent-pass -> B6-fail flips, 40-50% carry B6 scores >= 0.8 with exactly one
+# required_component_failed, and prediction length grew +27..37 chars. The
+# aggregate reward pays near-misses almost as much as passes, so the policy
+# drifted toward high-partial-credit plans that miss one required component:
+# OBJECTIVE MISMATCH, not a training bug.
+#
+# SINGLE-VARIABLE CHANGE vs b6_playworld_grpo.yaml:
+#   training.extra.reward_mode: pass_gated
+#     passed -> 0.5 + 0.5*score   (worst pass = 0.5)
+#     failed -> 0.1*score         (best fail  = 0.1)
+#   The >=0.4 step at the pass boundary makes completing every required
+#   component dominate any partial-credit strategy, while the graded slopes
+#   keep within-group advantages alive. Everything else (parent, data, budget,
+#   sampling, seed) is identical to B6 so the comparison is causal.
+#
+# Launch (Colab):
+#   python scripts/run_experiment.py \
+#     --config configs/experiments/b6r_playworld_grpo_gated.yaml \
+#     --parent-adapter-dir runs/<b4v2-run>/artifacts/final_adapter \
+#     --override lineage.parent_run_id=<b4v2 run id> \
+#     --override lineage.parent_adapter.sha256=<b4v2 sha> \
+#     --override data.source.local_path=data/train/playworld_prompts.jsonl \
+#     --hf-sync-repo m97j/aw-runs-b6r
+# Optional vLLM server rollouts (B6-B path, x18-pinned isolated env):
+#   bash scripts/launch_trl_vllm_server.sh Qwen/Qwen3-8B 8000   # background
+#   ... --override training.extra.use_vllm=true \
+#       --override training.extra.vllm_server_base_url=http://127.0.0.1:8000
+
+extends:
+  - ../base/project.yaml
+  - ../base/runtime_colab_g4.yaml
+  - ../base/model_qwen3_8b_base.yaml
+
+experiment_name: b6r-playworld-grpo-gated
+track: track_b_two_stage
+phase: phase2_playworld
+objective: grpo
+
+lineage:
+  initialization_mode: continue_training_existing_adapter
+  parent_run_id: null   # override at launch
+  parent_adapter:
+    repo_id: m97j/aw-runs-b4
+    revision: main
+    sha256: ""   # REQUIRED at launch
+
+data:
+  source:
+    local_path: data/train/playworld_prompts.jsonl
+
+training:
+  learning_rate: 1.0e-6
+  save_steps: 50
+  num_train_epochs: 1
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 4096
+  extra:
+    reward_mode: pass_gated
+    num_generations: 8
+    use_vllm: false
+    vllm_mode: server
+    vllm_gpu_memory_utilization: 0.3
+    max_prompt_length: 2048
+    max_completion_length: 768
+    temperature: 0.8
+    top_p: 0.95
