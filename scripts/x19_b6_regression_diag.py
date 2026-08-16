@@ -45,7 +45,7 @@ def _load_traces(run_dir: Path) -> dict[tuple[str, str], dict[str, Any]]:
                 clean_line = line.strip()
                 if not clean_line:
                     continue
-                row = json.loads(clean_line)
+                row = json.loads(line)
                 suite = row.get("suite") or row.get("suite_name") or path.stem
                 episode = str(
                     row.get("episode_id") or row.get("id")
@@ -57,14 +57,29 @@ def _load_traces(run_dir: Path) -> dict[tuple[str, str], dict[str, Any]]:
     return rows
 
 
+def _verdict(row: dict[str, Any]) -> dict[str, Any]:
+    """Canonical trace schema (evaluation/runner.py) nests the verdict:
+    {"id", "suite", "scenario_family_id", "prediction",
+     "verdict": {"status", "score", "reason_code", ...}}.
+    v1 of this script read row["status"] at top level and silently classified
+    EVERY episode as fail (fail->fail 300 across all suites) — schema drift
+    must fail loudly, hence the strict accessor."""
+    verdict = row.get("verdict")
+    if isinstance(verdict, dict):
+        return verdict
+    # legacy/flat fallback: treat the row itself as the verdict container
+    return row
+
+
 def _status(row: dict[str, Any]) -> str:
-    return str(row.get("status") or row.get("verdict") or "").lower()
+    return str(_verdict(row).get("status") or "").lower()
 
 
 def _score(row: dict[str, Any]) -> float | None:
+    verdict = _verdict(row)
     for key in ("score", "mean_score", "aggregate_score"):
-        if isinstance(row.get(key), (int, float)):
-            return float(row[key])
+        if isinstance(verdict.get(key), (int, float)):
+            return float(verdict[key])
     return None
 
 
@@ -76,12 +91,14 @@ def _pred_len(row: dict[str, Any]) -> int | None:
 
 
 def _reasons(row: dict[str, Any]) -> list[str]:
+    verdict = _verdict(row)
     out: list[str] = []
-    for key in ("reason_codes", "verdict_reasons", "reasons", "failure_reasons"):
-        value = row.get(key)
+    for key in ("reason_code", "reason_codes", "verdict_reasons", "reasons",
+                "failure_reasons"):
+        value = verdict.get(key)
         if isinstance(value, list):
             out.extend(str(v) for v in value)
-        elif isinstance(value, str):
+        elif isinstance(value, str) and value:
             out.append(value)
     return out
 
@@ -102,6 +119,19 @@ def main() -> int:
         raise SystemExit(
             "no shared (suite, episode_id) keys — check that both run dirs hold "
             "trace JSONLs for the same frozen suites")
+
+    # Sanity gate: if NO episode parses as 'passed' in either run, the trace
+    # schema is not what this script expects — abort instead of emitting an
+    # all-fail->fail report (the v1 silent-failure mode).
+    passed_a = sum(1 for k in shared if _status(traces_a[k]) == "passed")
+    passed_b = sum(1 for k in shared if _status(traces_b[k]) == "passed")
+    if passed_a == 0 and passed_b == 0:
+        sample = traces_a[shared[0]]
+        raise SystemExit(
+            "SCHEMA MISMATCH: 0 'passed' episodes parsed in BOTH runs — the\n"
+            "summary JSONs say otherwise, so status extraction is broken.\n"
+            f"First trace row keys: {sorted(sample.keys())}\n"
+            f"verdict sub-keys: {sorted(_verdict(sample).keys())}")
 
     per_suite: dict[str, dict[str, Any]] = {}
     buckets = [(0.0, 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.01)]
