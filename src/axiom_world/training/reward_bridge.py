@@ -1,8 +1,17 @@
 """Verifier -> TRL GRPO reward bridge (protocol §7.4 reward semantics).
 
-Reward policy (pre-registered):
-- passed  -> aggregate score (0..1)
-- failed  -> 0.0
+Reward policy (pre-registered, selected via ``reward_mode``):
+- ``aggregate`` (Phase-2 B6 original): passed -> aggregate score (0..1),
+  failed -> 0.0. x19 (2026-08-16) showed this objective MISMATCHES the
+  pass-gate metric: the B6 policy accumulated high partial credit (40-50%
+  of parent-pass->B6-fail flips scored >=0.8 with exactly one
+  required_component_failed) while pass_rate regressed 9-14pp on every
+  suite. The aggregate reward pays for near-misses; pass_rate does not.
+- ``pass_gated`` (B6-R): passed -> 0.5 + 0.5*score, failed -> 0.1*score.
+  The pass/fail boundary carries a guaranteed >=0.4 reward step, so no
+  amount of partial credit can dominate completing every required
+  component, while the small graded slopes on both sides keep within-group
+  advantage signal alive (pure 0/1 would zero out all-fail groups).
 - skipped / indeterminate / timeout / infra_error -> None (TRL >= 1.x treats
   None as 'exclude this completion from reward normalization'); counts are
   tallied for the run's infrastructure telemetry.
@@ -54,11 +63,31 @@ def _decode_scenario(raw: Any) -> Any:
     return raw
 
 
+def _reward_aggregate(status: VerificationStatus, score: float | None) -> float:
+    if status is VerificationStatus.PASSED:
+        return score if score is not None else 1.0
+    return 0.0
+
+
+def _reward_pass_gated(status: VerificationStatus, score: float | None) -> float:
+    s = score if score is not None else (1.0 if status is VerificationStatus.PASSED else 0.0)
+    if status is VerificationStatus.PASSED:
+        return 0.5 + 0.5 * s
+    return 0.1 * s
+
+
+REWARD_MODES: dict[str, Callable[[VerificationStatus, float | None], float]] = {
+    "aggregate": _reward_aggregate,
+    "pass_gated": _reward_pass_gated,
+}
+
+
 def verifier_reward_function(
     verifier: Verifier,
     status_counter: Counter | None = None,
     min_calls: int = DEFAULT_MIN_CALLS,
     max_excluded_fraction: float = DEFAULT_MAX_EXCLUDED_FRACTION,
+    reward_mode: str = "aggregate",
 ) -> Callable[..., list[float | None]]:
     """Build a TRL-compatible reward callable.
 
@@ -69,6 +98,10 @@ def verifier_reward_function(
     accepted for backward compatibility with pre-v0.6.12 datasets.
     """
     counter = status_counter if status_counter is not None else Counter()
+    if reward_mode not in REWARD_MODES:
+        raise ValueError(
+            f"unknown reward_mode {reward_mode!r}; expected one of {sorted(REWARD_MODES)}")
+    shape = REWARD_MODES[reward_mode]
 
     def _check_health() -> None:
         total = sum(counter.values())
@@ -80,7 +113,7 @@ def verifier_reward_function(
             raise RewardHealthError(
                 f"Reward stream degenerate: {excluded}/{total} completions "
                 f"({fraction:.1%}) returned excluded statuses "
-                f"{dict((k, counter[k]) for k in _EXCLUDED_VALUES if counter[k])} "   # noqa: C402
+                f"{dict((k, counter[k]) for k in _EXCLUDED_VALUES if counter[k])} "  # noqa: C402
                 f"(threshold {max_excluded_fraction:.0%} after {min_calls} calls). "
                 "Aborting instead of training with zero advantages. Most likely "
                 "causes: corrupted scenario transport (run scripts/"
@@ -103,18 +136,14 @@ def verifier_reward_function(
                 context["scenario"] = _decode_scenario(payloads[index])
             verdict = verifier.verify(text, context)
             counter[verdict.status.value] += 1
-            if verdict.status is VerificationStatus.PASSED:
-                rewards.append(verdict.score if verdict.score is not None else 1.0)
-            elif verdict.status is VerificationStatus.FAILED:
-                rewards.append(0.0)
-            elif verdict.status in _EXCLUDED:
-                rewards.append(None)
-            else:  # pragma: no cover - enum is closed
+            if verdict.status in (VerificationStatus.PASSED, VerificationStatus.FAILED):
+                rewards.append(shape(verdict.status, verdict.score))
+            else:
                 rewards.append(None)
         _check_health()
         return rewards
 
-    reward.__name__ = f"verifier_reward_{verifier.name}"
+    reward.__name__ = f"verifier_reward_{verifier.name}_{reward_mode}"
     return reward
 
 

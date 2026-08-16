@@ -96,3 +96,40 @@ def test_reward_health_guard_silent_below_min_calls() -> None:
     )
     rewards = reward_fn(prompts=["p"], completions=[GOOD], scenario=[{"broken": None}])
     assert rewards == [None]
+
+
+def test_pass_gated_reward_mode_separates_pass_from_partial_credit() -> None:
+    """B6-R (post-x19): a failed near-miss (score .9) must earn LESS than any pass."""
+    import json
+
+    reward_fn = verifier_reward_function(
+        default_playworld_verifier(), reward_mode="pass_gated")
+    scenario_dump = _scenario().model_dump(mode="json")
+    rewards = reward_fn(
+        prompts=["p"] * 2,
+        completions=[GOOD, ILLEGAL],
+        scenario_json=[json.dumps(scenario_dump, sort_keys=True)] * 2,
+    )
+    assert rewards[0] == 1.0            # passed, score 1.0 -> 0.5 + 0.5
+    assert 0.0 <= rewards[1] <= 0.1     # failed -> 0.1 * score, always < 0.5
+
+
+def test_reward_mode_shapes_and_gap() -> None:
+    from axiom_world.core.enums import VerificationStatus
+    from axiom_world.training.reward_bridge import REWARD_MODES
+
+    gated = REWARD_MODES["pass_gated"]
+    # worst pass must strictly beat best fail (the anti-near-miss guarantee)
+    assert gated(VerificationStatus.PASSED, 0.0) == 0.5
+    assert gated(VerificationStatus.FAILED, 1.0) == 0.1
+    assert gated(VerificationStatus.PASSED, 0.0) > gated(VerificationStatus.FAILED, 1.0)
+    agg = REWARD_MODES["aggregate"]
+    # the x19-diagnosed pathology: aggregate pays a 0.9 near-miss MORE than a 0.6 pass
+    assert agg(VerificationStatus.FAILED, 0.9) == 0.0  # bridge shape: aggregate pays fails 0.0, but PASSED near-1 scores dominate low passes
+
+
+def test_unknown_reward_mode_rejected() -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        verifier_reward_function(default_playworld_verifier(), reward_mode="nope")

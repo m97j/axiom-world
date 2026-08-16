@@ -62,7 +62,7 @@ def _git_state() -> dict[str, object]:
     }
 
 
-def main() -> int:     # noqa: PLR0912, PLR0915
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--override", action="append", default=[])
@@ -129,7 +129,12 @@ def main() -> int:     # noqa: PLR0912, PLR0915
         from axiom_world.training.reward_bridge import verifier_reward_function
         from axiom_world.verifiers.hybrid import default_playworld_verifier
 
-        reward_funcs = [verifier_reward_function(default_playworld_verifier(), status_counter)]
+        # reward_mode is an experiment-level choice (protocol §7.4): 'aggregate'
+        # (Phase-2 B6) or 'pass_gated' (B6-R, post-x19 objective-mismatch fix).
+        # It is consumed HERE, not forwarded to TRL's GRPOConfig.
+        reward_mode = str(config.training.extra.pop("reward_mode", "aggregate"))
+        reward_funcs = [verifier_reward_function(
+            default_playworld_verifier(), status_counter, reward_mode=reward_mode)]
 
     trainer = build_trainer(
         config, model, tokenizer, train_dataset,
