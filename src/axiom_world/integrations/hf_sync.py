@@ -106,12 +106,38 @@ class HFCheckpointSync:
         artifacts_dir: Path | None = None,
         keep_local_checkpoints: int = 2,
         private: bool = True,
+        keep_hub_checkpoints: int = 1,
     ) -> None:
         self.repo_id = repo_id
         self.run_id = run_id
         self.artifacts_dir = artifacts_dir
         self.keep_local_checkpoints = keep_local_checkpoints
         self.private = private
+        self.keep_hub_checkpoints = keep_hub_checkpoints
+
+    def prune_hub_checkpoints(self) -> None:
+        """Permanently delete this run's hub checkpoint LFS blobs, keeping
+        the newest ``keep_hub_checkpoints`` steps (0/negative disables)."""
+        if self.keep_hub_checkpoints <= 0:
+            return
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        by_step: dict[int, list[Any]] = {}
+        for info in api.list_lfs_files(self.repo_id):
+            # hub layout (see on_save): checkpoints live at ROOT as
+            # "checkpoint-<step>/..." and successive runs overwrite the same
+            # paths — which is exactly how stale hidden revisions pile up.
+            match = _CHECKPOINT_RE.match(info.filename)
+            if match:
+                by_step.setdefault(int(match.group(1)), []).append(info)
+        drop_steps = sorted(by_step)[: -self.keep_hub_checkpoints]
+        stale = [info for step in drop_steps for info in by_step[step]]
+        if stale:
+            api.permanently_delete_lfs_files(
+                self.repo_id, stale, rewrite_history=True)
+            print(f"[hf_sync] pruned {len(stale)} stale hub checkpoint blobs "
+                  f"(steps {drop_steps}, kept {sorted(by_step)[-self.keep_hub_checkpoints:]})")
 
     def build(self) -> Any:
         base = _make_callback_base()
@@ -145,5 +171,15 @@ class HFCheckpointSync:
 
                 for old in checkpoints[: -sync.keep_local_checkpoints]:
                     shutil.rmtree(old, ignore_errors=True)
+                # bound HUB storage (2026-08-16 quota incident): HF quota
+                # counts the LFS blobs of ALL revisions, so overwritten or
+                # merely 'deleted' checkpoints keep billing. Permanently
+                # delete hub checkpoint blobs older than the newest
+                # keep_hub_checkpoints. Best-effort: a failure here must
+                # never kill the training run.
+                try:
+                    sync.prune_hub_checkpoints()
+                except Exception as exc:  # noqa: BLE001 - telemetry only
+                    print(f"[hf_sync] hub checkpoint prune skipped: {exc!r}")
 
         return _Callback()
