@@ -4,6 +4,6 @@ title: "Axiom-World: Verifier-Guided Two-Stage Post-Training for Rule-Constraine
 authors:
   - family-names: "Kim"
     given-names: "Minjae"
-version: 0.6.12
-date-released: 2026-08-15
+version: 0.6.13
+date-released: 2026-08-17
 url: "https://github.com/m97j/axiom-world"
