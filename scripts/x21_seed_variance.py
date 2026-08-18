@@ -58,31 +58,34 @@ def main() -> int:
     if not (len(args.model) == len(args.eval_run) == len(args.seed)):
         parser.error("--model/--eval-run/--seed must be repeated in triples")
 
-    # records[model][seed][suite][metric]
     records: dict[str, dict[int, dict]] = {}
+
     for model, run, seed in zip(
         args.model, args.eval_run, args.seed, strict=True
     ):
         summary = _load_summary(Path(run))
         suites = summary.get("suites", summary)
+
         records.setdefault(model, {})[seed] = {
             s: {
-                m: (
-                    suites[s][m]["mean"]
-                    if isinstance(suites[s].get(m), dict)
-                    else suites[s].get(m)
-                )
+                m: suites[s][m]["mean"]
                 for m in METRICS
             }
             for s in args.suites
         }
 
     report: dict = {"suites": {}, "models": sorted(records), "verdict": {}}
+
     for suite in args.suites:
         report["suites"][suite] = {}
+
         for model, by_seed in records.items():
             for metric in METRICS:
-                vals = [by_seed[s][suite][metric] for s in sorted(by_seed)]
+                vals = [
+                    by_seed[s][suite][metric]
+                    for s in sorted(by_seed)
+                ]
+
                 report["suites"][suite].setdefault(model, {})[metric] = {
                     "per_seed": {
                         str(s): by_seed[s][suite][metric]
@@ -99,30 +102,42 @@ def main() -> int:
         "per_suite": {},
         "pass": True,
     }
+
     if {"b4v2", "a2v2"} <= records.keys():
-        common = sorted(set(records["b4v2"]) & set(records["a2v2"]))
+        common = sorted(
+            set(records["b4v2"]) & set(records["a2v2"])
+        )
         verdict["seeds"] = common
+
         for suite in args.suites:
             deltas = {
-                s: records["b4v2"][s][suite]["pass_rate"]
-                - records["a2v2"][s][suite]["pass_rate"]
+                s: (
+                    records["b4v2"][s][suite]["pass_rate"]
+                    - records["a2v2"][s][suite]["pass_rate"]
+                )
                 for s in common
             }
+
             signs = {
-                (-1 if d < 0 else (1 if d > 0 else 0))
+                -1 if d < 0 else (1 if d > 0 else 0)
                 for d in deltas.values()
             }
+
             consistent = len(signs) == 1 and 0 not in signs
+
             verdict["per_suite"][suite] = {
                 "delta_per_seed": {
-                    str(s): round(d, 4) for s, d in deltas.items()
+                    str(s): round(d, 4)
+                    for s, d in deltas.items()
                 },
                 "sign_consistent": consistent,
             }
+
             verdict["pass"] &= consistent
     else:
         verdict["pass"] = False
         verdict["error"] = "need both b4v2 and a2v2 records"
+
     report["verdict"] = verdict
 
     out = Path(args.output)
@@ -134,16 +149,23 @@ def main() -> int:
         f"{'pass mean±sd':>16} {'score mean±sd':>16}"
     )
     print("-" * 62)
+
     for suite in args.suites:
         for model in sorted(records):
             pr = report["suites"][suite][model]["pass_rate"]
             ms = report["suites"][suite][model]["mean_score"]
+
             print(
                 f"{suite:<20} {model:<6} "
                 f"{pr['mean']:.3f} ± {pr['sd']:.3f}      "
                 f"{ms['mean']:.3f} ± {ms['sd']:.3f}"
             )
-    print(f"\nG6 verdict: {'PASS' if verdict['pass'] else 'FAIL'} -> {out}")
+
+    print(
+        f"\nG6 verdict: "
+        f"{'PASS' if verdict['pass'] else 'FAIL'} -> {out}"
+    )
+
     return 0
 
 
