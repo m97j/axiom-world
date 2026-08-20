@@ -1,7 +1,7 @@
 # Axiom-World: A Pre-Registered Study of Two-Stage Post-Training for Rule-Grounded Planning in a Verifiable Toy World
 
-**Technical Report — Protocol v1 (v1.0-rc, 2026-07-23)**
-Author: m97j · Code & artifacts: <https://github.com/m97j/axiom-world> (public at release; results reproducible at tag `v1.0.0`) · Protocol: `docs/experimental-protocol.md` v1.4 (pre-registered, amendment-logged)
+**Technical Report — Protocol v1 (v1.0, 2026-07-23)**
+Author: Minjae Kim (m97j) · Code & artifacts: <https://github.com/m97j/axiom-world> (public at release; results reproducible at tag `v1.0.0`) · Protocol: `docs/experimental-protocol.md` v1.4 (pre-registered, amendment-logged)
 
 ---
 
@@ -96,9 +96,11 @@ Final-stage training of B4v2 and A2v2 was re-run with seeds 43 and 44 on identic
 
 **Champion seed stability (direct paired tests, s43/s44 vs the s42 run of record).** No suite regresses in either reseed: 18 of 20 suite-metric comparisons are n.s. (|Δpass| ≤ .013, p ≥ .52); the two exceptions are *small improvements* on comp-OOD (s43 +.037, perm. p = .063 / bootstrap CI excl. 0; s44 +.040, p = .041). Combined with the mean ± sd table, the champion is stable and the headline gap (~10–22 pp) exceeds seed noise by roughly an order of magnitude.
 
-### 4.2 Mechanism hints
+### 4.2 Failure analysis
 
 Failure taxonomies show *why* the routes differ. B4v2's failures are almost purely semantic (`required_component_failed`; format-gate failures ≈ 0; 0 truncated outputs), while A2v2 retains a format-fragility tail (e.g. s43: 57 malformed-JSON failures on adversarial, 55 on rule-OOD) and pervasive output truncation (~1,490/1,500 episodes hit the token cap — the direct-route model appends degenerate continuations after its JSON). Phase-1 general SFT appears to buy (a) clean sequence termination and format discipline, and (b) higher legal-action rates on OOD suites (≈ .69–.77 vs .66–.72), consistent with transferable procedural competence rather than surface memorization.
+
+**The adapter-contract prerequisite.** The termination/format axis was itself the subject of a mid-campaign engineering finding that conditions all results above: with a standard LoRA target set (attention/MLP projections only), fine-tuned models systematically failed to emit the chat template's terminal tokens and think-block delimiters — outputs ran to the token cap with degenerate continuations, indistinguishable at the loss level but catastrophic at the verifier's format gate. A bottom-up audit chain (x09 termination audit → x10 stop-logit probe → x13 trained-token NLL) localized the failure to special/control tokens whose embeddings and output logits are frozen under adapter-only training while the surrounding distribution shifts. Adding `lm_head` and `embed_tokens` to `modules_to_save` (the "v2 adapter contract", applied uniformly to *all* arms) resolved termination without touching task semantics. A detailed write-up with the audit evidence is maintained separately in `docs/experiments/adapter_contract_termination.md`; here we note only that the A2v2 truncation tail above is a *residual* of the same axis — the direct route, even under the v2 contract, retains weaker termination discipline than the two-stage route, suggesting Phase-1 data volume also contributes to stabilizing sequence-boundary behavior.
 
 ### 4.3 Reference rows (s42, off-the-shelf)
 
@@ -140,13 +142,15 @@ Verifier-mined pair quality was *higher* on the champion (mining yield .675 vs .
 
 Two GRPO variants on top of B4v2, sharing frozen scenario pools and decoding. Per-suite pass rates at s42 (B6-R rates derived exactly from the episode-paired flip matrices of the audited run of record `8791aa`; see §7.4):
 
-| Suite (pass) | B4v2 | **B6 (aggregate reward)** | Δ vs B4v2 (p) | **B6-R (pass-gated)** | Δ vs B4v2 |
-|---|---|---|---|---|---|
-| eval_id | .393 | .253 | **−.140 (.0002)** | .233 | −.160 |
-| eval_template_ood | .350 | .210 | **−.140 (.0001)** | .213 | −.137 |
-| eval_comp_ood | .303 | .217 | **−.087 (.024)** | .233 | −.070 |
-| eval_rule_ood | .297 | .260 | −.037 (.35) | .240 | −.057 |
-| eval_adversarial | .853 | .750 | **−.103 (.0001)** | .800 | −.053 |
+| Suite | B4v2 pass / score | **B6** pass (Δ, p) | **B6-R** pass / score (Δpass) |
+|---|---|---|---|
+| eval_id | .393 / .593 | .253 (**−.140, .0002**) | .233 / .530 (−.160) |
+| eval_template_ood | .350 / .559 | .210 (**−.140, .0001**) | .213 / .518 (−.137) |
+| eval_comp_ood | .303 / .546 | .217 (**−.087, .024**) | .233 / .533 (−.070) |
+| eval_rule_ood | .297 / .513 | .260 (−.037, .35) | .240 / .513 (−.057) |
+| eval_adversarial | .853 / .951 | .750 (**−.103, .0001**) | .800 / .929 (−.053) |
+
+B6-R pass rates from the audited `8791aa` summary agree exactly with the episode-paired flip-matrix reconstruction. Notably, B6-R's *mean scores* sit much closer to B4v2 than its pass rates (rule-OOD score is identical at .513; legal-action rates are *higher* than B4v2 on OOD suites, .77–.99): the GRPO policy remains a competent partial planner but loses precisely the required-component completion that strict passing demands — the score/pass wedge that the pass-gated reward was built to close at training time, visible here surviving into evaluation.
 
 B6 is also significantly below B5 on ID/template/adversarial (e.g. ID −.127, p = .0008). The GRPO arm was **closed with champion unchanged** (`docs/experiments/b6_grpo_closure.md`).
 
@@ -211,6 +215,3 @@ Reward-function or verifier refinement alone is unlikely to rescue online RL her
 
 x09 termination audit · x10 stop-logit probe · x11 adapter integrity · x12 attested probe · x13 trained-ids NLL · x15 SFT data diff · x16 SFT provenance resolver · x17 GRPO scenario audit · x19 regression/flip diagnostics · x20 eval identity audit (stale-weights guard) · x21 seed-variance aggregation. Each incident that motivated a tool is preserved chronologically in the campaign notebooks (aw_01–aw_11).
 
----
-
-*v1.0-rc. Remaining before v1.0 tag: (i) optional — B6-R mean-score row from `8791aa`'s evaluation_summary.json, (ii) DOI placeholder after TechRxiv submission, (iii) LaTeX conversion.*
