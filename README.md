@@ -1,95 +1,127 @@
 # Axiom-World
 
-> **Verifier-guided two-stage post-training for rule-constrained game-world
-> interaction, on a single NVIDIA RTX PRO 6000 Blackwell GPU.**
+> **A pre-registered, single-GPU study of two-stage post-training for
+> rule-grounded planning in a fully verifiable toy world.**
 
-A reproducible research framework studying whether general reasoning
-warm-start (Phase 1) improves domain adaptation to a symbolic, verifiable
-game world (Phase 2) — with exact, deterministic verifier rewards, a
-pre-registered experimental protocol, and enforced model lineage.
+Does general-reasoning SFT before task tuning transfer better than direct task
+tuning? Protocol v1 answers this with frozen, fingerprint-pinned evaluation
+suites, enforced artifact lineage, and a 3-seed final confirmation — including
+honestly documented negative results (DPO ≈ null; GRPO regression with a
+mechanistic post-mortem).
 
-[Experimental Protocol (pre-registered)](docs/experimental-protocol.md) ·
-Tech Report (TBD) · HF Collection (TBD)
+**[Tech Report v1.0](docs/reports/axiom-world-tech-report-v1.md)** ·
+[Pre-registered Protocol (v1.0 + amendment log)](docs/experimental-protocol.md) ·
+HF Collection: `axiom-world` (champion adapter `m97j/aw-qwen3-8b-v1`, datasets
+`m97j/aw-playworld`, `m97j/axiom-general-posttrain`) · TechRxiv DOI: (pending)
+
+## Headline results (Qwen3-8B-Base, LoRA, seeds 42/43/44, pass rate mean ± sd)
+
+| Suite | **B4v2: two-stage** (general SFT → task SFT) | A2v2: direct (task SFT → DPO) |
+|---|---|---|
+| in-distribution | **.393 ± .013** | .186 ± .002 |
+| template-OOD | **.349 ± .005** | .207 ± .003 |
+| compositional-OOD | **.329 ± .022** | .139 ± .004 |
+| rule-OOD | **.302 ± .005** | .192 ± .005 |
+| adversarial | **.851 ± .002** | .651 ± .011 |
+
+All 15 suite×seed deltas positive (paired permutation p ≤ 0.0004 each; Gate G6
+sign-consistency PASS). Further: offline DPO is ≈ null on both routes while the
+two-stage advantage fully survives it (B5 ≫ A2v2, 10/10, p ≤ .0002); verifier-
+rewarded GRPO *regressed* the champion under two reward designs — diagnosed as
+advantage starvation + entropy collapse, not reward shape (report §6).
+
+Claims are **comparative** (recipe deltas under a fixed small budget), not
+absolute task mastery — see report §7.
 
 ## Why this exists
 
-Most post-training projects report "the score went up." This project fixes,
-**before any experiment runs**:
-
-- the research questions and their falsification conditions,
-- the full experiment matrix (Tracks A/B/C + 4 ablations — nothing else),
-- the champion-selection rule (hard constraints → Pareto → primary metric),
-- the statistical analysis plan (paired bootstrap, permutation tests,
-  Holm–Bonferroni over 6 pre-registered comparisons),
-- and the artifact/lineage contract every run must satisfy.
-
-See `docs/experimental-protocol.md` (frozen v1.0; amendments are logged, never
-edited in place).
+Most post-training projects report "the score went up." This project fixed,
+**before any experiment ran**: the research questions and falsification
+conditions, the full experiment matrix, the champion-selection rule, the
+statistical analysis plan (paired bootstrap, permutation tests,
+Holm–Bonferroni), and the artifact/lineage contract every run must satisfy.
+Every deviation is a numbered amendment (`docs/experimental-protocol.md` §13,
+v1.0 → v1.4); every incident is preserved in the as-run notebooks.
 
 ## Design guarantees (enforced by code, verified by tests)
 
 | Guarantee | Where |
 |---|---|
-| A Track-B Phase-2 run cannot train unless its parent adapter is **byte-identical** (SHA-256) to the recorded Phase-1 champion | `core/lineage.py`, gate ordering proven in `tests/unit/test_trainer_factory.py` |
-| A run missing any of the 8 required artifacts can never reach `completed` | `core/context.py` |
+| A Phase-2 run cannot train unless its parent adapter is **byte-identical** (SHA-256) to the recorded parent champion | `core/lineage.py` |
+| A run missing any required artifact can never reach `completed` | `core/context.py` |
 | Frozen datasets that change after freeze **hard-fail** at load (fingerprint mismatch) | `data/bundle.py` |
 | Training data from an eval scenario family is rejected at load (leakage gate) | `data/bundle.py` |
 | Rewards come only from the deterministic transition engine; infra errors are never counted as model failures | `verifiers/`, `training/reward_bridge.py` |
-| Verifier-ranked preference pairs require a PASSED chosen candidate; the random-pairing control (E-RANDPAIR) is a first-class citizen | `data/records.py`, `generation/pair_mining.py` |
-| Canonical runs are SDPA/BF16-LoRA only; FA2 and QLoRA are quarantined to benchmarks/ablations | `core/schemas.py::validate_canonical` |
+| Evaluations are audited against stale-weights accidents (prediction-identity gate) | `scripts/x20_eval_identity_audit.py` |
+| Canonical runs are SDPA/BF16-LoRA with the v2 adapter contract (`modules_to_save: [lm_head, embed_tokens]`) | `core/schemas.py`, failure analysis below |
+
+## Failure analyses (read these first if you fine-tune base models with LoRA)
+
+- [Chat-template termination under adapter-only LoRA](docs/experiments/adapter_contract_termination.md)
+  — why attention/MLP-only LoRA cannot reliably emit `<|im_end|>` on a base
+  checkpoint (100 % truncation → 0 % after making token rows trainable), with
+  the full x09–x13 audit chain and a capacity argument.
+- [B6/B6-R GRPO arm closure](docs/experiments/b6_grpo_closure.md)
+  — aggregate-reward hacking, pass-gated reward control, episode-level flip
+  analysis, advantage starvation + entropy collapse.
+- [Gate G6 3-seed closure](docs/experiments/g6_seed_closure.md)
+  — reseeding design, verdict, and the (documented) baseline-plumbing incident.
 
 ## Repository layout
 
 ```text
-configs/           # extends-based composition; experiments/ = pre-registered recipes
+configs/             # extends-based composition; experiments/ = pre-registered recipes
 src/axiom_world/
-  core/            # config, context, manifest, lineage, fingerprints (the contract)
-  runtime/         # environment audit + strict policy
-  playworld/       # symbolic world: spec, deterministic transition engine, scenarios
-  verifiers/       # tiered deterministic verifiers + hybrid aggregation
-  data/            # canonical records + build_data_bundle (single entrypoint)
-  generation/      # backend abstraction (lazy vLLM), preference pair mining
-  training/        # TRL boundary, dataset adapter, verifier→GRPO reward bridge
-  evaluation/      # runner, bootstrap CIs, paired comparisons, failure taxonomy
-scripts/           # audit_runtime, smoke_gate_g1, build_eval_suites
-tests/             # 54 contract tests (CPU-only; run in CI)
-docs/              # experimental-protocol.md + contracts
+  core/              # config, context, manifest, lineage, fingerprints (the contract)
+  runtime/           # environment audit + strict policy
+  playworld/         # symbolic world: spec, deterministic transition engine, scenarios
+  verifiers/         # tiered deterministic verifiers + aggregation
+  data/              # canonical records + build_data_bundle (single entrypoint)
+  generation/        # backend abstraction, preference pair mining
+  training/          # TRL boundary, dataset adapter, verifier→GRPO reward bridge
+  evaluation/        # runner, bootstrap CIs, paired comparisons, failure taxonomy
+scripts/             # runtime audit, suite freeze, run/eval/analysis CLIs, x01–x21 diagnostics
+notebooks/protocol_v1/  # as-run campaign notebooks (aw_01–aw_11), outputs preserved
+tests/               # contract tests (CPU-only)
+docs/                # protocol, tech report, failure analyses
 ```
 
-## Quick start
-
-### Contract layer (any machine)
+## Reproducing
 
 ```bash
-pip install -e ".[dev]"
-pytest tests -q                      # 54 contract tests
-axiom validate-config --config configs/experiments/a1_playworld_sft.yaml \
-  --override model.revision=<exact-hash>
+pip install -e ".[dev]" && pytest tests -q          # contract layer, any machine
 ```
 
-### Colab G4 (canonical runtime)
+On the canonical runtime (Colab G4 / RTX PRO 6000 Blackwell):
 
 ```bash
 pip install -e . -r requirements/colab-g4.lock.txt
-python scripts/audit_runtime.py       # environment manifest
-python scripts/smoke_gate_g1.py       # Gate G1: TRL import gate + tiny LoRA train
-python scripts/build_eval_suites.py   # Gate G3: freeze eval suites (commit the manifest)
-axiom init-run --config configs/experiments/a1_playworld_sft.yaml \
-  --override data.source.repo_id=<hf-dataset>
+python scripts/audit_runtime.py
+python scripts/fetch_run.py --repo m97j/aw-runs-b4 \
+  --run-id 20260814-023603--b4v2-playworld-sft-from-p1--s42--c56ed2   # champion, sha-verified
+python scripts/run_evaluation.py --config configs/experiments/eval_playworld.yaml \
+  --adapter-dir runs/<run>/artifacts/final_adapter                     # frozen suites, greedy
 ```
 
-Session discipline (protocol §3): data preprocessing on CPU sessions,
-vLLM generation in a dedicated session (`requirements/vllm.lock.txt`),
-training/evaluation on the G4 session. Never co-locate vLLM with training.
+Every number in the tech report maps to a run id in its Appendix A; run
+artifacts live in `m97j/aw-runs-b4` and `m97j/aw-runs-seeds` (public). The
+as-run notebooks under `notebooks/protocol_v1/` are the chronological research
+log, incidents included.
 
-## Status
+## Status & roadmap
 
-`v0.1.0` — contract layer complete (config/lineage/data/verifier/eval
-contracts + 54 tests). Gates G1–G3 pending on the canonical runtime;
-experimental results will be added under the pre-registered protocol only.
+`v1.0.0` — protocol v1 CLOSED. Champion: **B4v2** (two-stage). Next (protocol
+v2a): absolute-performance campaign on the same frozen spec — Phase-1
+enrichment (harder math/logic, sandbox-verified code RL, structured
+tool-calling), Phase-2 scenario-pool expansion, online RL under its
+prerequisites. See report §8.
 
-No performance claims are made at this version, by design.
+## Citation
+
+See `CITATION.cff`. Please cite the tech report (TechRxiv DOI pending) and/or
+this repository at tag `v1.0.0`.
 
 ## License
 
-MIT (see `LICENSE`).
+MIT (see `LICENSE`). PlayWorld data is fully synthetic; the Phase-1 mixture
+derives from GSM8K and MATH (both MIT-licensed), see the dataset cards.
