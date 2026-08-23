@@ -1,7 +1,7 @@
 # Axiom-World: A Pre-Registered Study of Two-Stage Post-Training for Rule-Grounded Planning in a Verifiable Toy World
 
 **Technical Report — Protocol v1 (v1.0, 2026-07-23)**
-Author: Minjae Kim (m97j) · Code & artifacts: <https://github.com/m97j/axiom-world> (public at release; results reproducible at tag `v1.0.0`) · Protocol: `docs/experimental-protocol.md` v1.4 (pre-registered, amendment-logged)
+Author: Minjae Kim · DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149) · Code & artifacts: <https://github.com/m97j/axiom-world> (tag `v1.0.0`) · Protocol: `docs/experimental-protocol.md` v1.4 (pre-registered, amendment-logged)
 
 ---
 
@@ -189,6 +189,26 @@ Reward-function or verifier refinement alone is unlikely to rescue online RL her
 - **Protocol v2a — close the absolute-performance gap on the frozen spec.** Before enriching the world, push the champion recipe toward mastery of the *current* PlayWorld (construction-suite pass rates from ~.30–.39 toward a pre-registered target band), holding the frozen suites fixed so progress is measurable against v1. The levers are exactly those v1 identified as binding: **(a) Phase-1 enrichment** — the dominant transfer lever in v1 (B5 ≫ A2v2 even after DPO) — extending the math-centric mixture with harder math/logic corpora, sandbox-executed code generation with verified rewards, and structured-JSON tool-calling, all representationally adjacent to PlayWorld's output contract; **(b) Phase-2 data** — scenario-pool expansion and difficulty curricula targeting the `required_component_failed` mass; **(c) online RL retried under its prerequisites** — diverse/curriculum pools, KL-to-parent, entropy bonuses, SFT replay, with advantage-starvation and entropy metrics as pre-registered guardrails.
 - **Protocol v2b — controlled world-spec extension.** Only after v2a: longer horizons, NPC/environment interactions, grid-free 2-D layouts — each added as a *new frozen suite axis* so that v1/v2a checkpoints remain comparable baselines.
 - **Exploratory track — text-native spatial world modeling via vector-graphics output.** A candidate bridge from structured-JSON plans toward more general world models within a single text modality: emit **SVG** (text-serialized vector graphics) as the plan/state representation — paths in grid or grid-free 2-D worlds, composable scenes — verified by a *hybrid* stack (deterministic geometry checks on the parsed SVG first; rendering + rule-based CV, and optionally VLM judges, only as secondary graded signal). This inherits v1's core lesson: keep a deterministic verifier as the ground truth and treat learned judges as noisy auxiliaries, since verifier-rewarded RL already showed reward-mismatch failure modes with *exact* verifiers (§6). Known risks to de-risk first: LLMs' precise-geometry weaknesses in SVG generation, VLM-judge exploitability, and rendering-pipeline complexity on a single-GPU budget.
+SVG is an intermediate representation on this track, not its endpoint:
+the longer-term direction is toward partially observable worlds
+(belief-state maintenance under a deterministic simulator) and
+ultimately \emph{world-models-as-code}, where the model writes and
+revises executable dynamics whose rollouts remain exactly checkable ---
+preserving the verifier-as-ground-truth principle throughout.
+
+
+---
+
+## References
+
+1. K. Cobbe et al. "Training Verifiers to Solve Math Word Problems." arXiv:2110.14168, 2021. (GSM8K)
+2. D. Hendrycks et al. "Measuring Mathematical Problem Solving with the MATH Dataset." arXiv:2103.03874, 2021.
+3. E. J. Hu et al. "LoRA: Low-Rank Adaptation of Large Language Models." arXiv:2106.09685, 2021.
+4. R. Rafailov et al. "Direct Preference Optimization: Your Language Model is Secretly a Reward Model." arXiv:2305.18290, 2023.
+5. Z. Shao et al. "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models." arXiv:2402.03300, 2024. (GRPO)
+6. Qwen Team. "Qwen3 Technical Report." arXiv:2505.09388, 2025.
+7. L. von Werra et al. "TRL: Transformer Reinforcement Learning." https://github.com/huggingface/trl, 2020–.
+8. S. Mangrulkar et al. "PEFT: Parameter-Efficient Fine-Tuning." https://github.com/huggingface/peft, 2022–.
 
 ---
 

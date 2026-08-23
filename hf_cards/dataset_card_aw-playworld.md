@@ -21,7 +21,7 @@ plans, all generated and verified by a deterministic transition engine
 (no LLM-generated labels, no human data).
 
 - **Code & environment generator:** https://github.com/m97j/axiom-world (tag `v1.0.0`)
-- **Tech report:** TechRxiv DOI pending
+- **Tech report:** DOI [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149)
 
 ## Contents
 

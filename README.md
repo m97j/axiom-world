@@ -12,7 +12,7 @@ mechanistic post-mortem).
 **[Tech Report v1.0](docs/reports/axiom-world-tech-report-v1.md)** ·
 [Pre-registered Protocol (v1.0 + amendment log)](docs/experimental-protocol.md) ·
 HF Collection: `axiom-world` (champion adapter `m97j/aw-qwen3-8b-v1`, datasets
-`m97j/aw-playworld`, `m97j/axiom-general-posttrain`) · TechRxiv DOI: (pending)
+`m97j/aw-playworld`, `m97j/axiom-general-posttrain`) · Tech report DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149) (Zenodo)
 
 ## Headline results (Qwen3-8B-Base, LoRA, seeds 42/43/44, pass rate mean ± sd)
 
@@ -118,7 +118,7 @@ prerequisites. See report §8.
 
 ## Citation
 
-See `CITATION.cff`. Please cite the tech report (TechRxiv DOI pending) and/or
+See `CITATION.cff`. Please cite the tech report (DOI: 10.5281/zenodo.22052149) and/or
 this repository at tag `v1.0.0`.
 
 ## License

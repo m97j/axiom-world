@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiom-world"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Pre-registered two-stage post-training study in a verifiable toy world (protocol v1)"
 requires-python = ">=3.12"
 dependencies = [

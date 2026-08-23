@@ -25,7 +25,7 @@ fully verifiable toy world (PlayWorld). This is the **two-stage** recipe:
 general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
 
 - **Code & protocol:** https://github.com/m97j/axiom-world (tag `v1.0.0`)
-- **Tech report:** docs/reports/axiom-world-tech-report-v1.md (TechRxiv DOI pending)
+- **Tech report:** docs/reports/axiom-world-tech-report-v1.md (DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149))
 - **Run of record:** `20260814-023603--b4v2-playworld-sft-from-p1--s42--c56ed2`
   (full artifacts incl. resolved config & lineage: `m97j/aw-runs-b4`; 3-seed
   replications: `m97j/aw-runs-seeds`)
@@ -96,6 +96,7 @@ For verifier-scored evaluation on the frozen suites, use the repo's
   title  = {Axiom-World: A Pre-Registered Study of Two-Stage Post-Training
             for Rule-Grounded Planning in a Verifiable Toy World},
   year   = {2026},
+  doi    = {10.5281/zenodo.22052149},
   note   = {Technical report v1.0. Code: https://github.com/m97j/axiom-world}
 }
 ```

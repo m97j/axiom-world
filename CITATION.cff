@@ -4,10 +4,10 @@ title: "Axiom-World: A Pre-Registered Study of Two-Stage Post-Training for Rule-
 authors:
   - family-names: "Kim"
     given-names: "Minjae"
-version: 1.0.0rc1
-date-released: 2026-08-22
+version: 1.0.0
+date-released: 2026-08-23
 url: "https://github.com/m97j/axiom-world"
-# identifiers:
-#   - type: doi
-#     value: <TechRxiv DOI — fill in after submission>
-#     description: "Technical report (v1.0)"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22052149"
+    description: "Technical report (v1.0, Zenodo)"
