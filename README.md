@@ -10,9 +10,9 @@ honestly documented negative results (DPO ≈ null; GRPO regression with a
 mechanistic post-mortem).
 
 **[Tech Report v1.0](docs/reports/axiom-world-tech-report-v1.md)** ·
-[Pre-registered Protocol (v1.0 + amendment log)](docs/experimental-protocol.md) ·
-HF Collection: `axiom-world` (champion adapter `m97j/aw-qwen3-8b-v1`, datasets
-`m97j/aw-playworld`, `m97j/axiom-general-posttrain`) · Tech report DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149) (Zenodo)
+[Pre-registered Protocol (v1.0 + amendment log)](docs/experimental-protocol.md) · [Tech report DOI: 22052148](https://doi.org/10.5281/zenodo.22052148) (Zenodo)  
+[HF Collection](https://huggingface.co/collections/m97j/axiom-world) (champion adapter [`m97j/aw-qwen3-8b-v1`](https://huggingface.co/m97j/aw-qwen3-8b-v1), datasets
+[`m97j/aw-playworld`](https://huggingface.co/datasets/m97j/aw-playworld), [`m97j/axiom-general-posttrain`](https://huggingface.co/datasets/m97j/axiom-general-posttrain))  
 
 ## Headline results (Qwen3-8B-Base, LoRA, seeds 42/43/44, pass rate mean ± sd)
 
@@ -108,13 +108,33 @@ artifacts live in `m97j/aw-runs-b4` and `m97j/aw-runs-seeds` (public). The
 as-run notebooks under `notebooks/protocol_v1/` are the chronological research
 log, incidents included.
 
-## Status & roadmap
+## Status
 
 `v1.0.0` — protocol v1 CLOSED. Champion: **B4v2** (two-stage). Next (protocol
 v2a): absolute-performance campaign on the same frozen spec — Phase-1
 enrichment (harder math/logic, sandbox-verified code RL, structured
 tool-calling), Phase-2 scenario-pool expansion, online RL under its
 prerequisites. See report §8.
+
+## Protocols roadmap
+
+Every quantitative claim in this repository is attributable to exactly one
+pre-registered protocol, frozen in git before its first run.
+
+| Version | Status | Question | Records |
+|---|---|---|---|
+| **v1.4** | closed | Does staged post-training beat direct task tuning in a deterministically verifiable world? Where do DPO and verifier-rewarded RL help or fail? | [`docs/protocols/v1/`](docs/protocols/v1/) |
+| **v3.0-CLB** | pending freeze | Under partial observability, does explicit belief-state maintenance improve closed-loop success *and* the model's transition knowledge? | `docs/protocols/v3/` |
+
+Protocol v2 (absolute performance, spec expansion) is deferred, not cancelled —
+see [`docs/roadmap.md`](docs/roadmap.md).
+
+Records are layered by protocol version; machinery (`src/`, `tests/`,
+`scripts/common/`, `scripts/audits/`) is shared. See
+[`docs/protocols/README.md`](docs/protocols/README.md).
+
+Technical report: [10.5281/zenodo.22052148](https://doi.org/10.5281/zenodo.22052148) (all versions)
+
 
 ## Citation
 

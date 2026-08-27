@@ -15,8 +15,8 @@ from pathlib import Path
 from axiom_world.core.fingerprints import fingerprint_payload
 from axiom_world.data.bundle import write_jsonl
 from axiom_world.data.records import EvaluationRecord, Message, Provenance
-from axiom_world.playworld.scenario import ScenarioGenerator
-from axiom_world.playworld.spec import Scenario
+from axiom_world.worlds.playworld.scenario import ScenarioGenerator
+from axiom_world.worlds.playworld.spec import Scenario
 
 # Pre-registered suite composition (family primitives per suite).
 SUITES: dict[str, dict] = {

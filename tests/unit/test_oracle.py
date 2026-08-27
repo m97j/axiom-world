@@ -1,8 +1,8 @@
 import json
 
-from axiom_world.playworld.oracle import solve
-from axiom_world.playworld.scenario import ScenarioGenerator
 from axiom_world.verifiers.hybrid import default_playworld_verifier
+from axiom_world.worlds.playworld.oracle import solve
+from axiom_world.worlds.playworld.scenario import ScenarioGenerator
 from tests.unit.test_verifiers import _scenario
 
 

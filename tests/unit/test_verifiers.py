@@ -1,10 +1,10 @@
 import json
 
 from axiom_world.core.enums import VerificationStatus
-from axiom_world.playworld.spec import Goal, ResourceRule, Scenario, WorldSpec, WorldState
 from axiom_world.verifiers.base import Verdict, Verifier
 from axiom_world.verifiers.hybrid import default_playworld_verifier
 from axiom_world.verifiers.rule import GoalVerifier, LegalityVerifier, SchemaVerifier
+from axiom_world.worlds.playworld.spec import Goal, ResourceRule, Scenario, WorldSpec, WorldState
 
 
 def _scenario() -> Scenario:

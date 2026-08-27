@@ -17,9 +17,9 @@ from pathlib import Path
 
 from axiom_world.data.bundle import write_jsonl
 from axiom_world.data.records import EvaluationRecord, Message, Provenance, SFTRecord
-from axiom_world.playworld.oracle import solve
-from axiom_world.playworld.scenario import ScenarioGenerator
-from axiom_world.playworld.spec import Scenario
+from axiom_world.worlds.playworld.oracle import solve
+from axiom_world.worlds.playworld.scenario import ScenarioGenerator
+from axiom_world.worlds.playworld.spec import Scenario
 
 TRAIN_FAMILIES: dict[str, list[str]] = {
     "train-fam0": ["movement", "collection", "deposit"],

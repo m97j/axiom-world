@@ -62,10 +62,10 @@ def main() -> int:
 
     from datasets import Dataset
 
-    from axiom_world.playworld.oracle import solve
-    from axiom_world.playworld.spec import Scenario
     from axiom_world.training.reward_bridge import verifier_reward_function
     from axiom_world.verifiers.hybrid import default_playworld_verifier
+    from axiom_world.worlds.playworld.oracle import solve
+    from axiom_world.worlds.playworld.spec import Scenario
 
     records = _load_rows(Path(args.prompts))
     scenarios = [r["scenario"] for r in records]
