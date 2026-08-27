@@ -1,11 +1,18 @@
-from axiom_world.playworld.engine import (
+from axiom_world.worlds.playworld.engine import (
     ILLEGAL_INSUFFICIENT_ENERGY,
     ILLEGAL_INVENTORY_FULL,
     ILLEGAL_NOT_ADJACENT,
     TransitionEngine,
 )
-from axiom_world.playworld.scenario import ScenarioGenerator, split_families
-from axiom_world.playworld.spec import Action, Goal, ResourceRule, Scenario, WorldSpec, WorldState
+from axiom_world.worlds.playworld.scenario import ScenarioGenerator, split_families
+from axiom_world.worlds.playworld.spec import (
+    Action,
+    Goal,
+    ResourceRule,
+    Scenario,
+    WorldSpec,
+    WorldState,
+)
 
 
 def _spec(**overrides) -> WorldSpec:

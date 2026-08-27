@@ -11,7 +11,7 @@ from __future__ import annotations
 import random
 
 from axiom_world.core.errors import AxiomError
-from axiom_world.playworld.spec import (
+from axiom_world.worlds.playworld.spec import (
     Goal,
     ResourceRule,
     Scenario,

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from axiom_world.playworld.spec import Action, Goal, Scenario, WorldSpec, WorldState
+from axiom_world.worlds.playworld.spec import Action, Goal, Scenario, WorldSpec, WorldState
 
 # Stable reason codes (failure taxonomy keys).
 ILLEGAL_UNKNOWN_ACTION = "illegal_unknown_action"

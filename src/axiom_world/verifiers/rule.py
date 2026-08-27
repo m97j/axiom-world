@@ -14,9 +14,9 @@ from typing import Any
 from pydantic import ValidationError
 
 from axiom_world.core.enums import VerificationStatus
-from axiom_world.playworld.engine import TransitionEngine
-from axiom_world.playworld.spec import ACTION_GRAMMAR, Action, Scenario
 from axiom_world.verifiers.base import Verdict, Verifier
+from axiom_world.worlds.playworld.engine import TransitionEngine
+from axiom_world.worlds.playworld.spec import ACTION_GRAMMAR, Action, Scenario
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 

@@ -24,7 +24,7 @@ single-GPU comparison of post-training recipes for rule-grounded planning in a
 fully verifiable toy world (PlayWorld). This is the **two-stage** recipe:
 general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
 
-- **Code & protocol:** https://github.com/m97j/axiom-world (tag `v1.0.0`)
+- **Code & protocol:** [https://github.com/m97j/axiom-world](https://github.com/m97j/axiom-world) (tag `v1.0.0`)
 - **Tech report:** docs/reports/axiom-world-tech-report-v1.md (DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149))
 - **Run of record:** `20260814-023603--b4v2-playworld-sft-from-p1--s42--c56ed2`
   (full artifacts incl. resolved config & lineage: `m97j/aw-runs-b4`; 3-seed

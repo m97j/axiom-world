@@ -15,8 +15,8 @@ from collections import deque
 from dataclasses import dataclass
 
 from axiom_world.core.fingerprints import canonical_json
-from axiom_world.playworld.engine import TransitionEngine
-from axiom_world.playworld.spec import Action, Scenario, WorldState
+from axiom_world.worlds.playworld.engine import TransitionEngine
+from axiom_world.worlds.playworld.spec import Action, Scenario, WorldState
 
 
 @dataclass(frozen=True)

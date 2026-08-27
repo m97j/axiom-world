@@ -43,7 +43,7 @@ import json
 import os
 from pathlib import Path
 
-from x10_stop_logit_probe import probe_positions, render_train
+from scripts.diagnostics.v1.x10_stop_logit_probe import probe_positions, render_train
 
 
 def sha256_file(path: Path) -> str:

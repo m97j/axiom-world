@@ -18,7 +18,7 @@ The Phase-1 ("general warm-start") training mixture of the Axiom-World
 project: a pre-registered, weighted blend of public math-reasoning corpora
 with **dataset-derived gold answers only** (no LLM-generated labels).
 
-- **Code:** https://github.com/m97j/axiom-world (tag `v1.0.0`)
+- **Code:** [GitHub](https://github.com/m97j/axiom-world) (tag `v1.0.0`)
 
 ## Contents
 
