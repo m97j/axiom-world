@@ -15,7 +15,7 @@
   (the pre-restructure path `docs/experimental-protocol.md`, cited by the v1.0
   report under DOI 10.5281/zenodo.22052149, is retained as a redirecting stub)
 - Date frozen: `2026-08-27` (KST) — must be committed before run 1
-- Code anchor: git commit `<COMMIT_SHA>` of `github.com/m97j/axiom-world`
+- Code anchor: git commit `1ed61c4cf8b11fa1b02e456250e5ad37a7a7d52d` of `github.com/m97j/axiom-world`
   (the commit that freezes this document; see §12.1 for the two-commit
   freeze procedure)
 - Repository baseline: tag `v1.0.1` — protocol-layered layout, `worlds/`
@@ -598,14 +598,14 @@ RQ-E appears.
 
 ### 12.1 Freeze procedure (two-commit)
 
-This protocol's `<COMMIT_SHA>` is **self-referential**: it must name the commit
+This protocol's `1ed61c4cf8b11fa1b02e456250e5ad37a7a7d52d` is **self-referential**: it must name the commit
 that freezes this document, which cannot be known while writing it. The freeze
 is therefore executed in two commits, and both are part of the record:
 
-1. **Freeze commit.** The document is committed with `<COMMIT_SHA>` and
-   `<FREEZE_DATE>` still as literal placeholders. This commit's hash `S` is the
+1. **Freeze commit.** The document is committed with `1ed61c4cf8b11fa1b02e456250e5ad37a7a7d52d` and
+   `2026-08-27` still as literal placeholders. This commit's hash `S` is the
    protocol anchor. Nothing else may be included in this commit.
-2. **Seal commit.** `<COMMIT_SHA>` is replaced by `S` and `<FREEZE_DATE>` by the
+2. **Seal commit.** `1ed61c4cf8b11fa1b02e456250e5ad37a7a7d52d` is replaced by `S` and `2026-08-27` by the
    freeze commit's author date; the result is committed as a documentation-only
    change and tagged `protocol-v3.0-CLB`.
 
