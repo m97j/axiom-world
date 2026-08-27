@@ -19,10 +19,10 @@ jobs:
       - name: Unit + integration contract tests
         run: pytest tests -q
       - name: TRL import-gate contract (must fail cleanly without TRL)
-        run: python scripts/smoke_gate_g1.py --contract-only || test $? -eq 1
+        run: python scripts/diagnostics/v1/smoke_gate_g1.py --contract-only || test $? -eq 1
       - name: Eval-suite generation determinism
         run: |
-          python scripts/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/a
-          python scripts/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/b
+          python scripts/data/v1/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/a
+          python scripts/data/v1/build_eval_suites.py --episodes-per-suite 6 --output-dir /tmp/b
           diff <(jq -r .manifest_fingerprint /tmp/a/freeze_manifest.json) \
                <(jq -r .manifest_fingerprint /tmp/b/freeze_manifest.json)
