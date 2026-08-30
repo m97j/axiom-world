@@ -1,4 +1,4 @@
-# Axiom-World — Experimental Protocol
+﻿# Axiom-World — Experimental Protocol
 
 # Protocol v2.0-CLB — Closed-Loop Belief Track
 
@@ -1456,7 +1456,7 @@ changes and are **not** entered into this log.
 
 | Version | Date | Sections | Summary | Detailed Record |
 | --- | --- | --- | --- | --- |
-| v2.0 | FREEZE_DATE | — | Initial scientific freeze of Protocol v2.0-CLB. | — |
+| v2.0 | 2026-08-30 | — | Initial scientific freeze of Protocol v2.0-CLB. | — |
 
 <!--
 Append frozen amendments below this row.

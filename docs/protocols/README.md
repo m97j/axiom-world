@@ -10,7 +10,7 @@ amendment entries, never in-place edits.
 | Version            | Status | Frozen      | Question it settles                                                                                                                                                                         | Records       |
 | ------------------ | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | **v1.4**     | closed | 2026-07-23  | Does staged post-training (general-reasoning SFT → task SFT) beat direct task tuning in a deterministically verifiable planning world? Where do DPO and verifier-rewarded RL help or fail? | [`v1/`](v1/) |
-| **v2.0-CLB** | frozen | FREEZE_DATE | Under partial observability, does maintaining an explicit belief state improve closed-loop success and the model's transition knowledge, measured through counterfactual prediction error?  | [`v2/`](v2/) |
+| **v2.0-CLB** | frozen | 2026-08-30  | Under partial observability, does maintaining an explicit belief state improve closed-loop success and the model's transition knowledge, measured through counterfactual prediction error?  | [`v2/`](v2/) |
 
 The current research program is organized under Protocol v2:
 
