@@ -2,7 +2,7 @@
 
 # Protocol v2.0-CLB — Closed-Loop Belief Track
 
-> **Status: PRE-FREEZE DRAFT — FINAL DESIGN REVIEW**
+> **Status: FROZEN**
 >
 > This document is the proposed final protocol specification for the first
 > v2 subtrack. It has not yet been frozen.
@@ -22,8 +22,8 @@
 * Parent protocol: `v1.4` — completed and closed
 * Former protocol name: `v3.0-CLB`
 * Former protocol status: retained unchanged in git history for provenance
-* Date frozen: `TO_BE_FILLED_AT_FREEZE`
-* Freeze commit: `TO_BE_FILLED_AFTER_FREEZE_COMMIT`
+* Date frozen: `FREEZE_DATE`
+* Freeze commit: `FREEZE_COMMIT_SHA`
 * Repository baseline: `v1.0.1` protocol-layered layout
 * Companion documents:
 
@@ -1456,7 +1456,7 @@ changes and are **not** entered into this log.
 
 | Version | Date | Sections | Summary | Detailed Record |
 | --- | --- | --- | --- | --- |
-| v2.0 | TBD | — | Initial scientific freeze of Protocol v2.0-CLB. | — |
+| v2.0 | FREEZE_DATE | — | Initial scientific freeze of Protocol v2.0-CLB. | — |
 
 <!--
 Append frozen amendments below this row.
