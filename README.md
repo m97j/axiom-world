@@ -10,19 +10,19 @@ honestly documented negative results (DPO ≈ null; GRPO regression with a
 mechanistic post-mortem).
 
 **[Tech Report v1.0](docs/reports/v1/axiom-world-tech-report-v1.md)** ·
-[Pre-registered Protocol (v1.0 + amendment log)](docs/protocols/v1/experiment_protocol_v1.md) · [Tech report DOI: 22052148](https://doi.org/10.5281/zenodo.22052148) (Zenodo)  
+[Pre-registered Protocol (v1.0 + amendment log)](docs/protocols/v1/experiment_protocol_v1.md) · [Tech report DOI: 22052148](https://doi.org/10.5281/zenodo.22052148) (Zenodo)
 [HF Collection](https://huggingface.co/collections/m97j/axiom-world) (champion adapter [`m97j/aw-qwen3-8b-v1`](https://huggingface.co/m97j/aw-qwen3-8b-v1), datasets
-[`m97j/aw-playworld`](https://huggingface.co/datasets/m97j/aw-playworld), [`m97j/axiom-general-posttrain`](https://huggingface.co/datasets/m97j/axiom-general-posttrain))  
+[`m97j/aw-playworld`](https://huggingface.co/datasets/m97j/aw-playworld), [`m97j/axiom-general-posttrain`](https://huggingface.co/datasets/m97j/axiom-general-posttrain))
 
 ## Headline results (Qwen3-8B-Base, LoRA, seeds 42/43/44, pass rate mean ± sd)
 
-| Suite | **B4v2: two-stage** (general SFT → task SFT) | A2v2: direct (task SFT → DPO) |
-|---|---|---|
-| in-distribution | **.393 ± .013** | .186 ± .002 |
-| template-OOD | **.349 ± .005** | .207 ± .003 |
-| compositional-OOD | **.329 ± .022** | .139 ± .004 |
-| rule-OOD | **.302 ± .005** | .192 ± .005 |
-| adversarial | **.851 ± .002** | .651 ± .011 |
+| Suite             | **B4v2: two-stage** (general SFT → task SFT) | A2v2: direct (task SFT → DPO) |
+| ----------------- | --------------------------------------------------- | ------------------------------ |
+| in-distribution   | **.393 ± .013**                              | .186 ± .002                   |
+| template-OOD      | **.349 ± .005**                              | .207 ± .003                   |
+| compositional-OOD | **.329 ± .022**                              | .139 ± .004                   |
+| rule-OOD          | **.302 ± .005**                              | .192 ± .005                   |
+| adversarial       | **.851 ± .002**                              | .651 ± .011                   |
 
 All 15 suite×seed deltas positive (paired permutation p ≤ 0.0004 each; Gate G6
 sign-consistency PASS). Further: offline DPO is ≈ null on both routes while the
@@ -45,15 +45,15 @@ v1.0 → v1.4); every incident is preserved in the as-run notebooks.
 
 ## Design guarantees (enforced by code, verified by tests)
 
-| Guarantee | Where |
-|---|---|
-| A Phase-2 run cannot train unless its parent adapter is **byte-identical** (SHA-256) to the recorded parent champion | `core/lineage.py` |
-| A run missing any required artifact can never reach `completed` | `core/context.py` |
-| Frozen datasets that change after freeze **hard-fail** at load (fingerprint mismatch) | `data/bundle.py` |
-| Training data from an eval scenario family is rejected at load (leakage gate) | `data/bundle.py` |
-| Rewards come only from the deterministic transition engine; infra errors are never counted as model failures | `verifiers/`, `training/reward_bridge.py` |
-| Evaluations are audited against stale-weights accidents (prediction-identity gate) | `scripts/x20_eval_identity_audit.py` |
-| Canonical runs are SDPA/BF16-LoRA with the v2 adapter contract (`modules_to_save: [lm_head, embed_tokens]`) | `core/schemas.py`, failure analysis below |
+| Guarantee                                                                                                                 | Where                                         |
+| ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| A Phase-2 run cannot train unless its parent adapter is**byte-identical** (SHA-256) to the recorded parent champion | `core/lineage.py`                           |
+| A run missing any required artifact can never reach`completed`                                                          | `core/context.py`                           |
+| Frozen datasets that change after freeze**hard-fail** at load (fingerprint mismatch)                                | `data/bundle.py`                            |
+| Training data from an eval scenario family is rejected at load (leakage gate)                                             | `data/bundle.py`                            |
+| Rewards come only from the deterministic transition engine; infra errors are never counted as model failures              | `verifiers/`, `training/reward_bridge.py` |
+| Evaluations are audited against stale-weights accidents (prediction-identity gate)                                        | `scripts/x20_eval_identity_audit.py`        |
+| Canonical runs are SDPA/BF16-LoRA with the v2 adapter contract (`modules_to_save: [lm_head, embed_tokens]`)             | `core/schemas.py`, failure analysis below   |
 
 ## Failure analyses (read these first if you fine-tune base models with LoRA)
 
@@ -127,10 +127,10 @@ See [`docs/roadmap.md`](docs/roadmap.md) for the full research roadmap.
 Every quantitative claim in this repository is attributable to exactly one
 pre-registered protocol, frozen in git before its first canonical run.
 
-| Version | Status | Question | Records |
-|---|---|---|---|
-| **v1.4** | closed | Does staged post-training beat direct task tuning in a deterministically verifiable world? Where do DPO and verifier-rewarded RL help or fail? | [`docs/protocols/v1/`](docs/protocols/v1/) |
-| **v2.0-CLB** | pre-freeze | Under partial observability, does explicit belief-state maintenance improve closed-loop success and transition-model knowledge? | [`docs/protocols/v2/`](docs/protocols/v2/) |
+| Version            | Status | Question                                                                                                                                       | Records                                     |
+| ------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **v1.4**     | closed | Does staged post-training beat direct task tuning in a deterministically verifiable world? Where do DPO and verifier-rewarded RL help or fail? | [`docs/protocols/v1/`](docs/protocols/v1/) |
+| **v2.0-CLB** | frozen | Under partial observability, does explicit belief-state maintenance improve closed-loop success and transition-model knowledge?                | [`docs/protocols/v2/`](docs/protocols/v2/) |
 
 The broader v2 program separates closed-loop interaction (**v2-CLB**),
 agent-capability scaling (**v2-AP**), and world-complexity scaling (**v2-WE**).
@@ -150,4 +150,3 @@ this repository at tag `v1.0.0`.
 
 MIT (see `LICENSE`). PlayWorld data is fully synthetic; the Phase-1 mixture
 derives from GSM8K and MATH (both MIT-licensed), see the dataset cards.
- 
