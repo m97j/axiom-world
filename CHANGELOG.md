@@ -9,6 +9,18 @@ artifact, and is independent of protocol version numbers.
 
 ## [Unreleased]
 
+
+## [2.0.0] — 2026-08-30
+### Changed
+
+- Reclassified the closed-loop protocol from `v3.0-CLB` to `v2.0-CLB` before canonical experimental execution; protocol records moved from `docs/protocols/v3/` to `docs/protocols/v2/`.
+- Preserved the earlier `v3.0-CLB` freeze/seal commits and tag as immutable historical provenance.
+- Reorganized the forward research roadmap under Protocol v2:
+  `v2-CLB` for closed-loop belief/interaction,
+  `v2-AP` for agent-capability and Phase-1 scaling,
+  and `v2-WE` for controlled world-complexity extension.
+- Updated repository documentation, protocol indexes, roadmap references, and v1 failure-analysis/report documentation to match the revised lineage.
+
 ## [1.0.1] — 2026-08-28
 
 Repository restructure. **No experimental result, artifact, hash, or number is

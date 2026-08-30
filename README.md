@@ -9,8 +9,8 @@ suites, enforced artifact lineage, and a 3-seed final confirmation — including
 honestly documented negative results (DPO ≈ null; GRPO regression with a
 mechanistic post-mortem).
 
-**[Tech Report v1.0](docs/reports/axiom-world-tech-report-v1.md)** ·
-[Pre-registered Protocol (v1.0 + amendment log)](docs/experimental-protocol.md) · [Tech report DOI: 22052148](https://doi.org/10.5281/zenodo.22052148) (Zenodo)  
+**[Tech Report v1.0](docs/reports/v1/axiom-world-tech-report-v1.md)** ·
+[Pre-registered Protocol (v1.0 + amendment log)](docs/protocols/v1/experiment_protocol_v1.md) · [Tech report DOI: 22052148](https://doi.org/10.5281/zenodo.22052148) (Zenodo)  
 [HF Collection](https://huggingface.co/collections/m97j/axiom-world) (champion adapter [`m97j/aw-qwen3-8b-v1`](https://huggingface.co/m97j/aw-qwen3-8b-v1), datasets
 [`m97j/aw-playworld`](https://huggingface.co/datasets/m97j/aw-playworld), [`m97j/axiom-general-posttrain`](https://huggingface.co/datasets/m97j/axiom-general-posttrain))  
 
@@ -57,14 +57,14 @@ v1.0 → v1.4); every incident is preserved in the as-run notebooks.
 
 ## Failure analyses (read these first if you fine-tune base models with LoRA)
 
-- [Chat-template termination under adapter-only LoRA](docs/experiments/adapter_contract_termination.md)
-  — why attention/MLP-only LoRA cannot reliably emit `<|im_end|>` on a base
-  checkpoint (100 % truncation → 0 % after making token rows trainable), with
-  the full x09–x13 audit chain and a capacity argument.
-- [B6/B6-R GRPO arm closure](docs/experiments/b6_grpo_closure.md)
+- [Chat-template termination under adapter-only LoRA](docs/experiments/v1/adapter_contract_termination.md)
+  — why attention/MLP-only LoRA provided a brittle, indirect path for learning
+  robust `<|im_end|>` termination in this Base-model setting, with the full
+  x09–x13 audit chain and a parameterization/capacity analysis.
+- [B6/B6-R GRPO arm closure](docs/experiments/v1/b6_grpo_closure.md)
   — aggregate-reward hacking, pass-gated reward control, episode-level flip
   analysis, advantage starvation + entropy collapse.
-- [Gate G6 3-seed closure](docs/experiments/g6_seed_closure.md)
+- [Gate G6 3-seed closure](docs/experiments/v1/g6_seed_closure.md)
   — reseeding design, verdict, and the (documented) baseline-plumbing incident.
 
 ## Repository layout
@@ -110,31 +110,36 @@ log, incidents included.
 
 ## Status
 
-`v1.0.0` — protocol v1 CLOSED. Champion: **B4v2** (two-stage). Next (protocol
-v2a): absolute-performance campaign on the same frozen spec — Phase-1
-enrichment (harder math/logic, sandbox-verified code RL, structured
-tool-calling), Phase-2 scenario-pool expansion, online RL under its
-prerequisites. See report §8.
+`v1.0.0` — Protocol v1 CLOSED. Champion: **B4v2** (two-stage).
+
+Next: **Protocol v2.0-CLB — Closed-Loop Belief**, extending PlayWorld to
+partial observability, explicit belief-state maintenance, closed-loop
+interaction, counterfactual transition prediction, and verifier-grounded
+online RL.
+
+Phase-1/general agent-capability improvements are reserved for **v2-AP**;
+world-complexity scaling is reserved for **v2-WE**.
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the full research roadmap.
 
 ## Protocols roadmap
 
 Every quantitative claim in this repository is attributable to exactly one
-pre-registered protocol, frozen in git before its first run.
+pre-registered protocol, frozen in git before its first canonical run.
 
 | Version | Status | Question | Records |
 |---|---|---|---|
 | **v1.4** | closed | Does staged post-training beat direct task tuning in a deterministically verifiable world? Where do DPO and verifier-rewarded RL help or fail? | [`docs/protocols/v1/`](docs/protocols/v1/) |
-| **v3.0-CLB** | pending freeze | Under partial observability, does explicit belief-state maintenance improve closed-loop success *and* the model's transition knowledge? | `docs/protocols/v3/` |
+| **v2.0-CLB** | pre-freeze | Under partial observability, does explicit belief-state maintenance improve closed-loop success and transition-model knowledge? | [`docs/protocols/v2/`](docs/protocols/v2/) |
 
-Protocol v2 (absolute performance, spec expansion) is deferred, not cancelled —
-see [`docs/roadmap.md`](docs/roadmap.md).
+The broader v2 program separates closed-loop interaction (**v2-CLB**),
+agent-capability scaling (**v2-AP**), and world-complexity scaling (**v2-WE**).
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the authoritative roadmap.
 
 Records are layered by protocol version; machinery (`src/`, `tests/`,
 `scripts/common/`, `scripts/audits/`) is shared. See
 [`docs/protocols/README.md`](docs/protocols/README.md).
-
-Technical report: [10.5281/zenodo.22052148](https://doi.org/10.5281/zenodo.22052148) (all versions)
-
 
 ## Citation
 
@@ -145,3 +150,4 @@ this repository at tag `v1.0.0`.
 
 MIT (see `LICENSE`). PlayWorld data is fully synthetic; the Phase-1 mixture
 derives from GSM8K and MATH (both MIT-licensed), see the dataset cards.
+ 
