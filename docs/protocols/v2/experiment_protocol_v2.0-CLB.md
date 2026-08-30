@@ -22,8 +22,8 @@
 * Parent protocol: `v1.4` — completed and closed
 * Former protocol name: `v3.0-CLB`
 * Former protocol status: retained unchanged in git history for provenance
-* Date frozen: `FREEZE_DATE`
-* Freeze commit: `FREEZE_COMMIT_SHA`
+* Date frozen: `2026-08-30`
+* Freeze commit: `ab000929df543c77d285d98ae3cc0233300c992f`
 * Repository baseline: `v1.0.1` protocol-layered layout
 * Companion documents:
 
