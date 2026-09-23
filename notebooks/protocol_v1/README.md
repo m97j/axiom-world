@@ -44,7 +44,7 @@ Future protocol champions need their own reviewed release policy; adding CLI
 arguments alone would not make v1 probes, module checks and metadata universal.
 
 1. Commit and push the release code and notebook from the local repository,
-   excluding uncommitted CLB development. The header asks for the pushed full implementation commit SHA (`git rev-parse HEAD`), so the remote runtime loads the reviewed version rather than a moving main.
+   excluding uncommitted CLB development. The header pins published FP32 implementation `bf19c472b65ccd4fd5af848ce3f8ef1a8b189a46`, so the remote runtime loads the reviewed version rather than a moving main.
 2. Open the **Windows local** notebook in VS Code and select its Colab kernel.
    Run the common header. `git clone` in that cell executes on Colab and creates
    `/content/axiom-world-fp32`, not a second clone on Windows. The editable package
@@ -116,3 +116,15 @@ References: [PEFT checkpoint and merge format](https://huggingface.co/docs/peft/
 
 The BF16-base reference is an export diagnostic, not a replay of the original
 v1 evaluation runtime. Original benchmark equivalence still needs separate evaluation.
+
+## Stale notebook or kernel detection
+
+If the prepare cell title says BF16, uses `/content/axiom-world`, or omits
+`--dtype float32`, it is the previous notebook/kernel state. Preserve unsaved
+outputs in a separate notebook copy, then reopen the updated local file and run
+its common header before the release cells. GitHub push alone does not refresh
+an open notebook buffer or a running kernel. No runtime reset is needed solely
+for changing checkouts; the old checkout and failure evidence remain intact.
+The updated header pins the published FP32 implementation and each release
+command checks the checkout revision and release source cleanliness. Child
+processes receive that checkout's src directory explicitly through PYTHONPATH.
