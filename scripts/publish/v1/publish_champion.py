@@ -121,7 +121,7 @@ def prepare(args) -> None:
     (stage / "provenance" / "MODIFICATIONS.md").write_text(
         "Derived from Qwen/Qwen3-8B-Base (Qwen Team), Apache-2.0.\n"
         "Modified by Axiom-World Protocol v1 LoRA training, including saved embeddings\n"
-        "and lm_head; this release merges that adapter into BF16 base weights.\n"
+        "and lm_head; this release merges that adapter into FP32 weights (base loaded as BF16, then promoted).\n"
         "See manifest.json for exact sources and verification.\n", encoding="utf-8")
     (stage / "adapter" / "README.md").write_text(
         "# Original v1 champion adapter\n\nExact training artifact; use the pinned base revision "
@@ -129,7 +129,7 @@ def prepare(args) -> None:
     write_json(args.output / "plan.json", plan)
     request = {"base": BASE, "revision": BASE_REVISION, "adapter": str(adapter.resolve()),
                "stage": str(stage.resolve()), "scratch": str(scratch.resolve()),
-               "device": args.device, "probes": probes}
+               "device": args.device, "probes": probes, "dtype": args.dtype}
     verification = run_workers(request)
     # Bind source bytes again after workers, before issuing a successful receipt.
     validate_source(args.workspace)
@@ -141,14 +141,14 @@ def prepare(args) -> None:
                 "adapter_identity_sha256": CHAMPION_SHA, "base_model": BASE,
                 "base_revision": BASE_REVISION, "source_repo": SOURCE_REPO,
                 "source_revision": SOURCE_REVISION, "legacy_adapter_revision": LEGACY_REVISION,
-                "method": "peft.merge_and_unload(safe_merge=True)", "dtype": "bfloat16",
+                "method": "peft.merge_and_unload(safe_merge=True)", "dtype": args.dtype, "base_load_dtype": "bfloat16",
                 "max_shard_size": "5GB", "versions": versions, "verification": verification,
                 "release_code_sha256": {
                     "publish_champion.py": fingerprint_file(Path(__file__)),
                     "champion_release.py": fingerprint_file(Path(run_workers.__code__.co_filename)),
                     "hf_sync.py": fingerprint_file(Path(hf_sync.__file__))},
                 "probe_sha256": fingerprint_file(args.probes),
-                "scope": "Engineering export check; original benchmark scores belong to adapter runs",
+                "scope": "FP32 export check; historical benchmark equivalence unverified",
                 "generation": {"do_sample": False, "eos": ["<|endoftext|>", "<|im_end|>"]}}
     write_json(stage / "provenance" / "manifest.json", manifest)
     shutil.copy2(args.probes, stage / "provenance" / "merge_probes.json")
@@ -158,10 +158,11 @@ def prepare(args) -> None:
     print(f"VERIFIED_LOCAL_RELEASE={args.output}; HF has not been changed")
 
 
-def publish(output: Path, *, execute: bool) -> None:
+def publish(output: Path, *, execute: bool, accept_precision_change: bool = False) -> None:
     receipt = json.loads((output / "verified.json").read_text(encoding="utf-8"))
     stage = output / "model"
     if (receipt.get("status") != "verified" or inventory(stage) != receipt["files"]
+            or receipt["verification"].get("dtype") != "float32"
             or not receipt["verification"]["merge"]["passed"]
             or not receipt["verification"]["standalone"]["passed"]):
         raise ValueError("Unverified or changed release payload")
@@ -172,6 +173,11 @@ def publish(output: Path, *, execute: bool) -> None:
     if not execute:
         print("Dry run: verified payload; no remote writes")
         return
+    if (not receipt["verification"]["precision"]["historical_vs_fp32_merged"]["passed"]
+            and not accept_precision_change):
+        raise ValueError("Historical precision comparison failed; review precision.json and model card. "
+                         "Use --accept-precision-change only to publish a disclosed FP32 variant; "
+                         "this does not establish historical benchmark equivalence.")
     marker = output / "upload_started.json"
     # An uncertain network response must never silently trigger another mutation.
     with marker.open("x", encoding="utf-8") as stream:
@@ -180,7 +186,7 @@ def publish(output: Path, *, execute: bool) -> None:
         repo_id=TARGET_REPO, stage=stage, expected_head=expected_plan["expected_head"],
         legacy_revision=LEGACY_REVISION, delete_paths=expected_plan["delete_paths"],
         legacy_tag="protocol-v1-adapter",
-        commit_message="Publish verified BF16 v1 champion and preserve adapter")
+        commit_message="Publish FP32 v1 export with precision comparison and preserved adapter")
     write_json(output / "uploaded.json", {"revision": revision, "repo": TARGET_REPO})
     remote = hf_sync.release_inventory(TARGET_REPO, revision)
     for file in receipt["files"]:
@@ -206,15 +212,19 @@ def main() -> int:
     mode.add_argument("--publish", action="store_true")
     mode.add_argument("--dry-run", action="store_true")
     parser.add_argument("--workspace", type=Path, default=Path.cwd())
-    parser.add_argument("--output", type=Path, default=Path("runs/champion-v1-release"))
+    parser.add_argument("--output", type=Path, default=Path("runs/champion-v1-release-fp32"))
     parser.add_argument("--card", type=Path, default=root / "hf_cards/v1/model_card_aw-qwen3-8b-v1.md")
     parser.add_argument("--probes", type=Path, default=root / "configs/releases/v1_merge_probes.json")
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
+    parser.add_argument("--dtype", choices=["float32"], default="float32",
+                        help="BF16 export is unsupported after failed precision validation")
+    parser.add_argument("--accept-precision-change", action="store_true",
+                        help="Acknowledge disclosed historical precision drift when publishing")
     args = parser.parse_args()
     if args.prepare:
         prepare(args)
     elif args.publish or (args.output / "verified.json").is_file():
-        publish(args.output, execute=args.publish)
+        publish(args.output, execute=args.publish, accept_precision_change=args.accept_precision_change)
     else:
         artifacts = validate_source(args.workspace)
         print(f"Champion identity verified: {CHAMPION_SHA}")

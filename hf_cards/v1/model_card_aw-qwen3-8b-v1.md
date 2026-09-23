@@ -19,7 +19,7 @@ language:
 
 # aw-qwen3-8b-v1 — Axiom-World Protocol-v1 Champion (B4v2)
 
-The standalone BF16 export of the final champion adapter of **Axiom-World protocol v1**: a pre-registered,
+The standalone FP32 export of the final champion adapter of **Axiom-World protocol v1**: a pre-registered,
 single-GPU comparison of post-training recipes for rule-grounded planning in a
 fully verifiable toy world (PlayWorld). This is the **two-stage** recipe:
 general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
@@ -39,7 +39,7 @@ general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
 | Parent (Phase 1) | `b1-general-sft-v2--s42--e6e83b` (sha-pinned; GSM8K .6 + MATH-algebra .4, 8k records) |
 | Phase-2 data | 2,000 oracle-derived PlayWorld episodes, fingerprint `sha256:54fcb1d3…` |
 | Adapter sha256 | `sha256:d4fcacddf21f758cdab904845ebdfee1eefde309c0edb6205bac64d5f07c76c8` |
-| Precision / attn | BF16 / SDPA |
+| Export precision / attn | FP32 / SDPA |
 
 The `modules_to_save` choice is not incidental: attention/MLP-only LoRA on this
 base model cannot reliably emit the chat template's terminal `<|im_end|>`
@@ -72,7 +72,7 @@ rendered with the bundled chat template.
 
 ## Release layout and provenance
 
-The repository root contains a standalone BF16 model in standard Transformers
+The repository root contains a standalone FP32 model in standard Transformers
 safetensors format (5 GB maximum shard size). `adapter/` preserves the exact
 original PEFT weights, config, tokenizer and chat template. The adapter identity
 digest above combines the adapter config and weight-file digests; it is not the
@@ -94,6 +94,21 @@ Greedy generation stops on end-of-text or `<|im_end|>`; apply the saved chat
 template for instruction inputs. External benchmark prompting is a separate
 choice to record with its results.
 
+## Precision and verification scope
+
+This export promotes the BF16-loaded base and original adapter to FP32 before
+merging, and preserves FP32 through saving and standalone reload. It is a
+precision variant of the historical inference representation. The original
+campaign scores above are NOT measurements of this FP32 export. Full historical
+benchmark equivalence has not been established. Numerical merge correctness is
+checked against the FP32 adapter; comparison with BF16-base PEFT inference is
+reported separately in `provenance/manifest.json` under `verification.precision`.
+
+BF16 export attempts failed the engineering comparison. Load this checkpoint
+explicitly in FP32; casting to BF16 or quantizing changes the verified execution
+contract and requires separate evaluation. Benchmark runners should record the
+checkpoint revision, actual dtype and attention implementation.
+
 ## How to load
 
 ```python
@@ -101,7 +116,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 repo = "m97j/aw-qwen3-8b-v1"
 # Pin the published commit from published.json for repeatable benchmarking.
-model = AutoModelForCausalLM.from_pretrained(repo, torch_dtype="bfloat16")
+model = AutoModelForCausalLM.from_pretrained(repo, dtype="float32", attn_implementation="sdpa")
 tok = AutoTokenizer.from_pretrained(repo)
 ```
 

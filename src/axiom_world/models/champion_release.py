@@ -1,4 +1,4 @@
-"""Local BF16 export and fresh-process verification; no Hub writes.
+"""Local FP32 export and fresh-process verification; no Hub writes.
 
 The probes are engineering checks, not a reproduction of the v1 benchmark.
 GPU/model imports are lazy so release planning remains CPU/lightweight.
@@ -31,9 +31,14 @@ def inventory(root: Path) -> list[dict]:
              "sha256": fingerprint_file(p)} for p in sorted(root.rglob("*")) if p.is_file()]
 
 
-def compare_logits(reference, actual, reference_generations, generations) -> dict:
+FP32_GATES = {"max_abs": 0.001, "mean_abs": 0.0001, "top1_agreement": 0.99,
+              "generation_agreement": 0.90}
+
+
+def compare_logits(reference, actual, reference_generations, generations, *, gates=None) -> dict:
     import torch
 
+    gates = GATES if gates is None else gates
     if set(reference) != set(actual) or not reference or not reference_generations:
         raise ValueError("Missing probe outputs")
     maximum, total, count, matches, positions = 0.0, 0.0, 0, 0, 0
@@ -51,10 +56,10 @@ def compare_logits(reference, actual, reference_generations, generations) -> dic
               "top1_agreement": matches / positions,
               "generation_agreement": sum(a == b for a, b in zip(
                   reference_generations, generations, strict=True)) / len(reference_generations)}
-    result["passed"] = (result["max_abs"] <= GATES["max_abs"]
-                        and result["mean_abs"] <= GATES["mean_abs"]
-                        and result["top1_agreement"] >= GATES["top1_agreement"]
-                        and result["generation_agreement"] >= GATES["generation_agreement"])
+    result["passed"] = (result["max_abs"] <= gates["max_abs"]
+                        and result["mean_abs"] <= gates["mean_abs"]
+                        and result["top1_agreement"] >= gates["top1_agreement"]
+                        and result["generation_agreement"] >= gates["generation_agreement"])
     return result
 
 
@@ -127,8 +132,11 @@ def merge_worker(request: dict) -> None:
     tokenizer = AutoTokenizer.from_pretrained(adapter, local_files_only=True, trust_remote_code=False)
     if tokenizer.pad_token_id is None or not tokenizer.chat_template:
         raise ValueError("Champion tokenizer must include pad token and chat template")
+    if request.get("dtype") != "float32":
+        raise ValueError("This release path requires explicit dtype=float32")
+    torch.set_float32_matmul_precision("highest")
     base = AutoModelForCausalLM.from_pretrained(
-        request["base"], revision=request["revision"], torch_dtype=torch.bfloat16,
+        request["base"], revision=request["revision"], dtype=torch.bfloat16,
         attn_implementation="sdpa", device_map=request["device"], trust_remote_code=False)
     if getattr(base.config, "quantization_config", None):
         raise ValueError("Quantized base is not a BF16 release source")
@@ -141,19 +149,40 @@ def merge_worker(request: dict) -> None:
     model.generation_config.eos_token_id = list(dict.fromkeys([tokenizer.eos_token_id, eos]))
     model.generation_config.pad_token_id = tokenizer.pad_token_id
     model.generation_config.do_sample = False
+    print("[probe] BF16-base / PEFT default promotion reference", flush=True)
+    historical, historical_gen = _probe(model, tokenizer, request["probes"])
+    model.float()
+    print("[probe] FP32 adapter reference", flush=True)
     before, before_gen = _probe(model, tokenizer, request["probes"])
-    merged = model.merge_and_unload(safe_merge=True, progressbar=True).to(dtype=torch.bfloat16).eval()
+    precision = {"reference": "BF16-base PEFT default promotion, not a replay of the historical evaluator",
+                 "scope": "Engineering probes only; historical benchmark equivalence unverified",
+                 "historical_vs_fp32_adapter": compare_logits(
+                     historical, before, historical_gen, before_gen)}
+    write_json(scratch / "precision.json", precision)
+    print("[merge] FP32, safe_merge=True", flush=True)
+    merged = model.merge_and_unload(safe_merge=True, progressbar=False).eval()
+    # Preserve actual trained module sharing, rather than the base config's assumption.
+    merged.config.tie_word_embeddings = (
+        merged.get_input_embeddings().weight.data_ptr()
+        == merged.get_output_embeddings().weight.data_ptr())
     if any("lora_" in key or "modules_to_save" in key for key in merged.state_dict()):
         raise ValueError("PEFT tensors survived merge")
     _check_saved_modules(merged, adapter)
     after, after_gen = _probe(merged, tokenizer, request["probes"])
-    report = compare_logits(before, after, before_gen, after_gen)
+    report = compare_logits(before, after, before_gen, after_gen, gates=FP32_GATES)
+    precision["historical_vs_fp32_merged"] = compare_logits(
+        historical, after, historical_gen, after_gen)
+    write_json(scratch / "precision.json", precision)
+    print(json.dumps({"merge": report, "precision": precision}, indent=2), flush=True)
     report["runtime"] = {"device": request["device"], "torch_cuda": torch.version.cuda,
                          "gpu_name": torch.cuda.get_device_name() if request["device"] == "cuda" else None,
-                         "attention": "sdpa", "reference": "PEFT default adapter dtype promotion"}
+                         "attention": "sdpa", "reference": "BF16-loaded base and PEFT adapter promoted together to FP32",
+                         "dtype": "float32", "matmul_precision": "highest", "gates": FP32_GATES}
     write_json(scratch / "merge.json", report)
     if not report["passed"]:
         raise ValueError("Adapter-versus-merged gate failed; artifacts preserved for diagnosis")
+    if any(p.dtype != torch.float32 for p in merged.parameters() if p.is_floating_point()):
+        raise ValueError("Merged model is not wholly FP32")
     merged.save_pretrained(stage, safe_serialization=True, max_shard_size="5GB")
     save_file(after, scratch / "merged_logits.safetensors")
     write_json(scratch / "generations.json", after_gen)
@@ -179,22 +208,26 @@ def reload_worker(request: dict) -> None:
     if (stage / "adapter_config.json").exists():
         raise ValueError("Root adapter config would trigger automatic adapter loading")
     tokenizer = AutoTokenizer.from_pretrained(stage, local_files_only=True, trust_remote_code=False)
+    if request.get("dtype") != "float32":
+        raise ValueError("Standalone request must specify float32")
+    torch.set_float32_matmul_precision("highest")
     model, loading = AutoModelForCausalLM.from_pretrained(
-        stage, torch_dtype=torch.bfloat16, device_map=request["device"],
+        stage, dtype=torch.float32, device_map=request["device"],
         attn_implementation="sdpa", local_files_only=True, trust_remote_code=False,
         output_loading_info=True)
     if any(loading.get(key) for key in ["missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs"]):
         raise ValueError(f"Standalone state-dict load was incomplete: {loading}")
     if getattr(model.config, "quantization_config", None):
         raise ValueError("Unexpected quantization")
-    if any(p.dtype != torch.bfloat16 for p in model.parameters() if p.is_floating_point()):
-        raise ValueError("Standalone model is not wholly BF16")
+    if any(p.dtype != torch.float32 for p in model.parameters() if p.is_floating_point()):
+        raise ValueError("Standalone model is not wholly FP32")
     _check_saved_modules(model, stage / "adapter")
     actual, generations = _probe(model, tokenizer, request["probes"])
     result = compare_logits(load_file(scratch / "merged_logits.safetensors"), actual,
                             json.loads((scratch / "generations.json").read_text()), generations)
-    # Same serialized BF16 weights, device and backend: require exact replay.
+    # Same serialized FP32 weights, device and backend: require exact replay.
     result["passed"] = result["max_abs"] == 0 and result["generation_agreement"] == 1
+    result["dtype"] = "float32"
     result["offline"] = True
     result["peft_imported"] = any(k == "peft" or k.startswith("peft.") for k in sys.modules)
     result["passed"] = result["passed"] and not result["peft_imported"]
@@ -214,7 +247,9 @@ def run_workers(request: dict) -> dict:
             env.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_DATASETS_OFFLINE="1")
         subprocess.run([sys.executable, "-m", __name__, mode, str(request_path)],
                        check=True, env=env)
-    return {"gates": GATES, "probe_count": len(request["probes"]),
+    return {"gates": FP32_GATES, "dtype": "float32",
+            "historical_comparison_gates": GATES,
+            "precision": json.loads((scratch / "precision.json").read_text()), "probe_count": len(request["probes"]),
             "merge": json.loads((scratch / "merge.json").read_text()),
             "standalone": json.loads((scratch / "standalone.json").read_text())}
 

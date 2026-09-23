@@ -135,3 +135,38 @@ def test_v1_publisher_defaults_resolve_from_relocated_script(monkeypatch):
     monkeypatch.setattr(publisher, "prepare", inspect)
     monkeypatch.setattr(sys, "argv", ["publish_champion", "--prepare"])
     assert publisher.main() == 0
+
+
+def test_fp32_gate_is_stricter_than_historical_comparison():
+    torch = pytest.importorskip("torch")
+    from axiom_world.models.champion_release import FP32_GATES
+    ref = {"0": torch.tensor([[1.0, 2.0]])}
+    actual = {"0": ref["0"] + 0.01}
+    assert compare_logits(ref, actual, [[1]], [[1]])["passed"]
+    assert not compare_logits(ref, actual, [[1]], [[1]], gates=FP32_GATES)["passed"]
+
+
+def test_precision_drift_requires_explicit_publish_acknowledgement(tmp_path, monkeypatch):
+    publisher = script("publish_champion")
+    stage = tmp_path / "model"
+    stage.mkdir()
+    (stage / "config.json").write_text("{}")
+    plan = {"expected_head": "a" * 40, "delete_paths": []}
+    receipt = {"status": "verified", "files": inventory(stage), "plan": plan,
+               "verification": {"dtype": "float32", "merge": {"passed": True},
+                   "standalone": {"passed": True},
+                   "precision": {"historical_vs_fp32_merged": {"passed": False}}}}
+    (tmp_path / "verified.json").write_text(json.dumps(receipt))
+    monkeypatch.setattr(publisher, "remote_plan", lambda _: plan)
+    publisher.publish(tmp_path, execute=False)
+    with pytest.raises(ValueError, match="accept-precision-change"):
+        publisher.publish(tmp_path, execute=True)
+    assert not (tmp_path / "upload_started.json").exists()
+    class ReachedUpload(Exception):
+        pass
+    def upload(**kwargs):
+        raise ReachedUpload()
+    monkeypatch.setattr(hf_sync, "commit_model_release", upload)
+    with pytest.raises(ReachedUpload):
+        publisher.publish(tmp_path, execute=True, accept_precision_change=True)
+    assert (tmp_path / "upload_started.json").is_file()

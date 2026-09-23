@@ -44,11 +44,10 @@ Future protocol champions need their own reviewed release policy; adding CLI
 arguments alone would not make v1 probes, module checks and metadata universal.
 
 1. Commit and push the release code and notebook from the local repository,
-   excluding uncommitted CLB development. The supplied header pins the implementation
-   commit, so the remote runtime loads the reviewed version rather than a moving main.
+   excluding uncommitted CLB development. The header asks for the pushed full implementation commit SHA (`git rev-parse HEAD`), so the remote runtime loads the reviewed version rather than a moving main.
 2. Open the **Windows local** notebook in VS Code and select its Colab kernel.
    Run the common header. `git clone` in that cell executes on Colab and creates
-   `/content/axiom-world`, not a second clone on Windows. The editable package
+   `/content/axiom-world-fp32`, not a second clone on Windows. The editable package
    install runs on Colab too. No PyPI publication, ZIP upload, embedded source
    snapshot or browser notebook is needed. See the
    [official extension guide](https://github.com/googlecolab/colab-vscode/wiki/User-Guide).
@@ -58,17 +57,23 @@ arguments alone would not make v1 probes, module checks and metadata universal.
    HF token is needed for the last publish cell. The existing Colab dependency
    lock is used; image-owned torch/CUDA are not explicitly reinstalled.
 4. Run the fetch/dry-run cell, then the prepare cell. It requires enough CPU RAM,
-   GPU VRAM and disk for base cache, adapter, BF16 output and probe files. An 8B
-   BF16 payload is roughly 16 GB before the saved adapter and caches; provision
+   GPU VRAM and disk for base cache, adapter, FP32 output and probe files. An 8B
+   FP32 payload is roughly 32 GB before the saved adapter and caches; provision
    ample headroom. No paid runtime is selected or connected by these files.
 5. Inspect the printed `verified.json`: 32 fixed raw/chat probes, adapter tensor
-   attestation, saved-module preservation, BF16 merge, numerical gates and fresh
-   offline standalone load. Default bounds are max absolute logit error 0.5,
-   mean 0.03, top-1 agreement 0.99, and exact 32-token generation agreement 0.90.
+   attestation, saved-module preservation, FP32 merge, numerical gates and fresh
+   offline standalone load. Default bounds are max absolute logit error 0.001,
+   mean 0.0001, top-1 agreement 0.99, and exact 32-token generation agreement 0.90.
    These are conservative engineering thresholds, not established Qwen error
    bounds; a failure stops publication and needs investigation. Fresh reload must
    reproduce saved-model logits and generations exactly on the same device/backend.
-6. Run the separate publish cell only when ready. It verifies the payload hashes,
+   `verification.precision` separately compares historical BF16-base PEFT inference
+   with FP32 inference (comparison bounds: max 0.5, mean 0.03, top-1 0.99,
+   generation 0.90). These observations do not gate FP32 merge correctness and
+   do not establish original benchmark equivalence. Retain failed BF16 outputs.
+6. Review the precision comparison and model card before enabling the final cell.
+   Set `PUBLISH_PRECISION_VARIANT=True` only to publish the disclosed FP32 variant.
+   The CLI requires `--accept-precision-change` when this comparison fails. It verifies the payload hashes,
    preserves the adapter-only commit with `protocol-v1-adapter`, and atomically
    adds root merged weights plus `adapter/`, removing only the two old root
    adapter files. It guards the expected remote HEAD and retains Git history.
@@ -108,3 +113,6 @@ The original numerical results remain attributed to adapter evaluations.
 
 References: [PEFT checkpoint and merge format](https://huggingface.co/docs/peft/developer_guides/checkpoint),
 [Hub atomic commit API](https://huggingface.co/docs/huggingface_hub/package_reference/hf_api).
+
+The BF16-base reference is an export diagnostic, not a replay of the original
+v1 evaluation runtime. Original benchmark equivalence still needs separate evaluation.
