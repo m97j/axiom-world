@@ -1,7 +1,7 @@
 ---
-license: mit
+license: apache-2.0
 base_model: Qwen/Qwen3-8B-Base
-library_name: peft
+library_name: transformers
 pipeline_tag: text-generation
 tags:
   - lora
@@ -19,13 +19,13 @@ language:
 
 # aw-qwen3-8b-v1 — Axiom-World Protocol-v1 Champion (B4v2)
 
-The final champion adapter of **Axiom-World protocol v1**: a pre-registered,
+The standalone BF16 export of the final champion adapter of **Axiom-World protocol v1**: a pre-registered,
 single-GPU comparison of post-training recipes for rule-grounded planning in a
 fully verifiable toy world (PlayWorld). This is the **two-stage** recipe:
 general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
 
 - **Code & protocol:** [https://github.com/m97j/axiom-world](https://github.com/m97j/axiom-world) (tag `v1.0.0`)
-- **Tech report:** docs/reports/axiom-world-tech-report-v1.md (DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149))
+- **Tech report:** docs/reports/v1/axiom-world-tech-report-v1.md (DOI: [10.5281/zenodo.22052149](https://doi.org/10.5281/zenodo.22052149))
 - **Run of record:** `20260814-023603--b4v2-playworld-sft-from-p1--s42--c56ed2`
   (full artifacts incl. resolved config & lineage: `m97j/aw-runs-b4`; 3-seed
   replications: `m97j/aw-runs-seeds`)
@@ -44,7 +44,7 @@ general-reasoning SFT (GSM8K + MATH-algebra) → PlayWorld task SFT.
 The `modules_to_save` choice is not incidental: attention/MLP-only LoRA on this
 base model cannot reliably emit the chat template's terminal `<|im_end|>`
 (100 % output truncation). Full failure analysis:
-[`docs/experiments/adapter_contract_termination.md`](https://github.com/m97j/axiom-world/blob/main/docs/experiments/adapter_contract_termination.md).
+[`docs/experiments/v1/adapter_contract_termination.md`](https://github.com/m97j/axiom-world/blob/main/docs/experiments/v1/adapter_contract_termination.md).
 
 ## Evaluation (frozen PlayWorld suites, 300 episodes each, greedy decoding)
 
@@ -70,23 +70,56 @@ budget/scale; see report §7). PlayWorld is synthetic; transfer to real agent
 tasks is untested. Outputs are structured-JSON plans for PlayWorld episodes
 rendered with the bundled chat template.
 
+## Release layout and provenance
+
+The repository root contains a standalone BF16 model in standard Transformers
+safetensors format (5 GB maximum shard size). `adapter/` preserves the exact
+original PEFT weights, config, tokenizer and chat template. The adapter identity
+digest above combines the adapter config and weight-file digests; it is not the
+SHA-256 of the safetensors file alone.
+
+`provenance/manifest.json` records the pinned base and source revisions, library
+versions, fixed engineering gates, and measured export verification results.
+Original adapter-only revision:
+`f33d2d16125e89eb38d4b668a2c20a6929ad3784` (tag `protocol-v1-adapter`).
+History is preserved. Old root-adapter consumers must pin that revision or use
+`subfolder="adapter"`. The model includes Qwen weights under Apache-2.0; the
+Axiom-World code license remains MIT. See the original
+[Qwen model card and license](https://huggingface.co/Qwen/Qwen3-8B-Base).
+
+The table above reports the original adapter campaign, including three training
+seeds; this public artifact is the seed-42 champion. Export checks are numerical
+and standalone-loading checks, not rerun benchmark scores or an ARC result.
+Greedy generation stops on end-of-text or `<|im_end|>`; apply the saved chat
+template for instruction inputs. External benchmark prompting is a separate
+choice to record with its results.
+
 ## How to load
 
 ```python
-from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+repo = "m97j/aw-qwen3-8b-v1"
+# Pin the published commit from published.json for repeatable benchmarking.
+model = AutoModelForCausalLM.from_pretrained(repo, torch_dtype="bfloat16")
+tok = AutoTokenizer.from_pretrained(repo)
+```
+
+To inspect the original training representation:
+
+```python
+from peft import PeftModel
 base = AutoModelForCausalLM.from_pretrained(
     "Qwen/Qwen3-8B-Base",
     revision="49e3418fbbbca6ecbdf9608b4d22e5a407081db4",
     torch_dtype="bfloat16", attn_implementation="sdpa",
 )
-model = PeftModel.from_pretrained(base, "m97j/aw-qwen3-8b-v1")
-tok = AutoTokenizer.from_pretrained("m97j/aw-qwen3-8b-v1")
+model = PeftModel.from_pretrained(base, repo, subfolder="adapter")
 ```
 
-For verifier-scored evaluation on the frozen suites, use the repo's
-`scripts/run_evaluation.py` (fingerprint-gated).
+For verifier-scored evaluation on the frozen suites, use the code repository's
+`scripts/common/run_evaluation.py` with the explicit adapter path and frozen data.
+See `notebooks/protocol_v1/README.md` for historical replay boundaries.
 
 ## Citation
 

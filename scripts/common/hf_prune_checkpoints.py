@@ -1,33 +1,15 @@
 #!/usr/bin/env python
-"""Reclaim HF storage quota from aw-runs-* repos (2026-08-16 quota incident).
+"""Inspect legacy run-checkpoint storage (read-only).
 
-WHY QUOTA != VISIBLE SIZE. HF repos are git(-LFS/Xet) backed: a commit that
-deletes or overwrites a path only moves HEAD — the underlying LFS blobs of
-EVERY historical revision remain on the server (that is what makes
-`revision=` fetches and restores possible) and **all of them count against
-the account storage quota**. This is why the B6 repo "shows" ~300GB of files
-but bills ~600GB after the B6-R rerun overwrote the same paths: the B6-era
-blobs are still there, one commit behind. A `delete_files(...)` commit alone
-therefore frees NOTHING.
+A path deletion commit preserves history and is suitable for release layout
+migration. Permanent LFS deletion destroys historical bytes and is NOT a
+champion migration mechanism. Historical checkpoint aliases can share an OID
+with adapters or retained checkpoints; this path-only tool cannot prove their
+safety. Execution is retired; use an independently reviewed object-aware plan.
+Visible size, historical storage and physical deduplication are different; this
+listing does not establish billable quota or promise reclaimed bytes.
 
-WHAT ACTUALLY FREES SPACE: `HfApi.permanently_delete_lfs_files(...)`, which
-removes the LFS blobs themselves (with history rewrite). This script:
-
-  1. lists all LFS files in the repo,
-  2. selects checkpoint blobs (`<run>/checkpoints/checkpoint-N/...`),
-     keeping the newest --keep-last N checkpoints per run,
-  3. by default only touches runs whose artifacts/lineage.json exists at HEAD
-     (completed & synced) — pass --also-incomplete <run-id> for others,
-  4. PERMANENTLY deletes the rest (dry-run by default; --execute to act).
-
-Durable evidence (runs/<id>/artifacts/, run_card, wandb) is never touched.
-Intermediate checkpoints are transient resume aids per protocol; deleting
-them after a completed run destroys no pre-registered evidence.
-
-Usage:
-  python scripts/hf_prune_checkpoints.py --repo m97j/aw-runs-b6                  # dry-run
-  python scripts/hf_prune_checkpoints.py --repo m97j/aw-runs-b6 \
-      --also-incomplete <b6r-run-id> --keep-last 1 --execute
+Usage: python scripts/common/hf_prune_checkpoints.py --repo m97j/aw-runs-b4
 """
 from __future__ import annotations
 
@@ -35,7 +17,10 @@ import argparse
 import re
 from collections import defaultdict
 
-from huggingface_hub import HfApi
+from axiom_world.integrations.hf_sync import (
+    list_repository_files,
+    list_storage_objects,
+)
 
 # Two hub layouts exist: root-level "checkpoint-N/..." (hf_sync on_save uses
 # path_in_repo=checkpoint-N, successive runs OVERWRITE the same paths) and the
@@ -64,12 +49,17 @@ def main() -> int:
     parser.add_argument("--execute", action="store_true",
                         help="PERMANENTLY delete LFS blobs (default: dry-run)")
     args = parser.parse_args()
+    if args.keep_last < 0:
+        parser.error("keep-last must be nonnegative")
+    if args.execute:
+        parser.error("Permanent deletion disabled: path-only selection cannot protect shared objects/history")
+    if not re.fullmatch(r"[^/]+/aw-runs-[^/]+", args.repo):
+        parser.error("This diagnostic only accepts aw-runs-* repositories, never champion repositories")
 
-    api = HfApi()
-    head_files = set(api.list_repo_files(args.repo))
+    head_files = set(list_repository_files(args.repo))
     completed = {f.split("/", 1)[0] for f in head_files if "/artifacts/lineage.json" in f}
 
-    lfs_files = list(api.list_lfs_files(args.repo))
+    lfs_files = list_storage_objects(args.repo)
     # group checkpoint LFS blobs: run -> step -> [LFSFileInfo]
     ckpts: dict[str, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     other_bytes = 0
@@ -100,13 +90,9 @@ def main() -> int:
 
     freed = sum(i.size for i in to_delete)
     print(f"\nnon-checkpoint LFS in repo: {_fmt(other_bytes)}")
-    print(f"LFS blobs to PERMANENTLY delete: {len(to_delete)} files, ~{_fmt(freed)} "
+    print(f"Path-selected LFS candidates (NOT authorized for deletion): {len(to_delete)} files, ~{_fmt(freed)} "
           f"(execute={args.execute})")
-    print("NOTE: quota counts ALL revisions' blobs; this permanent deletion "
-          "(rewrite_history=True) is the only path that actually frees space.")
-    if args.execute and to_delete:
-        api.permanently_delete_lfs_files(args.repo, to_delete, rewrite_history=True)
-        print("permanently deleted. Storage accounting may take a while to refresh.")
+    print("Read-only candidates, not a safe deletion plan or billable storage estimate.")
     return 0
 
 

@@ -1,0 +1,178 @@
+[
+  {
+    "text": "The state of the world is"
+  },
+  {
+    "text": "A valid plan must obey every rule."
+  },
+  {
+    "text": "If the agent has zero energy,"
+  },
+  {
+    "text": "The shortest legal sequence of actions is"
+  },
+  {
+    "text": "An inventory contains two keys and one tool."
+  },
+  {
+    "text": "Explain why a locked door cannot be opened without a key."
+  },
+  {
+    "text": "Given x = 7 and y = 5, x + y ="
+  },
+  {
+    "text": "A counterexample to this plan is"
+  },
+  {
+    "text": "The action JSON is {\"actions\": ["
+  },
+  {
+    "text": "At location loc_0 the available resources are"
+  },
+  {
+    "text": "A move consumes one unit of energy."
+  },
+  {
+    "text": "The final state must satisfy the goal."
+  },
+  {
+    "text": "First collect the required resource, then"
+  },
+  {
+    "text": "There is no legal solution because"
+  },
+  {
+    "text": "Check every precondition before applying an action."
+  },
+  {
+    "text": "The difference between a legal action and a successful plan is"
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "The state of the world is"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "A valid plan must obey every rule."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "If the agent has zero energy,"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "The shortest legal sequence of actions is"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "An inventory contains two keys and one tool."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Explain why a locked door cannot be opened without a key."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Given x = 7 and y = 5, x + y ="
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "A counterexample to this plan is"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "The action JSON is {\"actions\": ["
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "At location loc_0 the available resources are"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "A move consumes one unit of energy."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "The final state must satisfy the goal."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "First collect the required resource, then"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "There is no legal solution because"
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Check every precondition before applying an action."
+      }
+    ]
+  },
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "The difference between a legal action and a successful plan is"
+      }
+    ]
+  }
+]
