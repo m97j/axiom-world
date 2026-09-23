@@ -152,3 +152,33 @@ Preserve the current Colab runtime and files to avoid repeating the 8B merge.
 
 The header permits updating the known previous clean FP32 checkout to the pinned
 recovery implementation. It performs no reset or clean; saved runs stay in place.
+
+## Task comparison before publication
+
+Run `scripts/publish/v1/compare_champion.py --release runs/champion-v1-release-fp32
+--output runs/champion-v1-comparison --batch-size 4` after standalone verification.
+The output directory must be new. The command downloads (does not regenerate)
+all five 300-episode suites from aw-playworld revision
+`20a669ce2782546572dc6445e8b5cba62577ac34` and validates their original fingerprints.
+It archives v1 code `ff984e4bef63a2a04d3606b01e01da4152a91a21` into the output
+folder and uses its schemas, config and verifier in isolated child processes.
+Reference is BF16 base + original adapter; candidate is saved FP32 standalone.
+Before GPU allocation, both tokenizers must render identical prompt token IDs.
+Both arms use the v1 empty-think opener, greedy SDPA and 1024-token limit.
+Batch size 4 is explicit for FP32 memory headroom; the historical notebook used
+100, so this is a paired current-stack comparison, not historical exact replay.
+
+This generates 3000 completions, substantially more work than the 32 probes.
+No training, model overwrite, Hub upload, or automatic publication occurs.
+Progress is printed every batch; per-episode outputs/verdicts are flushed to
+reference.jsonl and candidate.jsonl. An interruption leaves partial evidence,
+no completion report, and does not silently resume or rerun it. Choose a new
+comparison directory only after investigating any failure. Keep the runtime
+and all reports until saved elsewhere.
+
+Review comparison.json: suite pass rates, paired regressions/improvements,
+format failures, truncation and exact-text agreement. Equal mean success alone
+does not establish equivalence, and text changes alone do not prove regression.
+No acceptance margin is invented after seeing results; publication remains a
+separate reviewed decision. The evaluation does not modify verified.json or the
+release payload. Bring the report back for review before enabling the final cell.
