@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.mark.parametrize("tied", [False, True])
-def test_tiny_fp32_merge_and_fresh_offline_reload(tmp_path, tied):
+def test_tiny_fp32_merge_and_fresh_offline_reload(tmp_path, tied, monkeypatch):
     torch = pytest.importorskip("torch")
     pytest.importorskip("peft")
     from peft import LoraConfig, get_peft_model
@@ -41,9 +41,27 @@ def test_tiny_fp32_merge_and_fresh_offline_reload(tmp_path, tied):
     stage.mkdir()
     shutil.copytree(adapter, stage / "adapter")
     tok.save_pretrained(stage)
-    report = run_workers({"base": str(base_dir), "revision": None, "adapter": str(adapter),
+    request = {"base": str(base_dir), "revision": None, "adapter": str(adapter),
         "stage": str(stage), "scratch": str(tmp_path / "verification"), "device": "cpu", "dtype": "float32",
-        "probes": [{"text": "hello world"}, {"messages": [{"role": "user", "content": "hello"}]}]})
+        "probes": [{"text": "hello world"}, {"messages": [{"role": "user", "content": "hello"}]}]}
+    if tied:
+        import subprocess
+
+        import axiom_world.models.champion_release as release
+        original_run = subprocess.run
+        calls = []
+        def interrupted_run(argv, **kwargs):
+            calls.append(argv[3])
+            if calls == ["merge", "reload"]:
+                raise RuntimeError("simulated reload interruption")
+            return original_run(argv, **kwargs)
+        monkeypatch.setattr(release.subprocess, "run", interrupted_run)
+        with pytest.raises(RuntimeError, match="simulated"):
+            run_workers(request)
+        report = run_workers(request, reload_only=True)
+        assert calls == ["merge", "reload", "reload"]
+    else:
+        report = run_workers(request)
     assert report["merge"]["passed"]
     assert report["standalone"]["passed"]
     assert report["standalone"]["peft_imported"] is False

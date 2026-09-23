@@ -170,3 +170,29 @@ def test_precision_drift_requires_explicit_publish_acknowledgement(tmp_path, mon
     with pytest.raises(ReachedUpload):
         publisher.publish(tmp_path, execute=True, accept_precision_change=True)
     assert (tmp_path / "upload_started.json").is_file()
+
+
+def test_peft_probe_allowed_but_import_blocked_in_fresh_process():
+    import subprocess
+    subprocess.run([sys.executable, "-c", """
+import importlib.util
+import sys
+from axiom_world.models.champion_release import block_peft_imports
+block_peft_imports()
+assert importlib.util.find_spec('peft') is not None
+try:
+    import peft
+except ImportError as error:
+    assert 'Standalone verification forbids' in str(error)
+else:
+    raise AssertionError('PEFT import was allowed')
+assert 'peft' not in sys.modules
+"""], check=True)
+
+
+def test_reload_recovery_rejects_changed_request_before_worker(tmp_path):
+    from axiom_world.models.champion_release import run_workers
+    request = {"scratch": str(tmp_path), "dtype": "float32"}
+    (tmp_path / "request.json").write_text(json.dumps(request))
+    with pytest.raises(ValueError, match="differs"):
+        run_workers({**request, "dtype": "bfloat16"}, reload_only=True)

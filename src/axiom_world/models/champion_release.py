@@ -190,20 +190,38 @@ def merge_worker(request: dict) -> None:
     gc.collect()
 
 
-def reload_worker(request: dict) -> None:
-    # Deliberately no PEFT import: block implicit adapter fallback as well.
+def block_peft_imports():
+    """Allow find_spec availability probes, reject actual module execution."""
     import importlib.abc
+    import importlib.util
 
-    import torch
-    from safetensors.torch import load_file
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    class NoPeftLoader(importlib.abc.Loader):
+        def create_module(self, spec):
+            return None
+
+        def exec_module(self, module):
+            raise ImportError("Standalone verification forbids PEFT imports")
 
     class NoPeft(importlib.abc.MetaPathFinder):
         def find_spec(self, fullname, path=None, target=None):
             if fullname == "peft" or fullname.startswith("peft."):
-                raise ImportError("Standalone verification forbids PEFT")
+                return importlib.util.spec_from_loader(fullname, NoPeftLoader(), is_package=True)
+            return None
 
-    sys.meta_path.insert(0, NoPeft())
+    if any(k == "peft" or k.startswith("peft.") for k in sys.modules):
+        raise RuntimeError("Standalone worker already imported PEFT")
+    blocker = NoPeft()
+    sys.meta_path.insert(0, blocker)
+    return blocker
+
+
+def reload_worker(request: dict) -> None:
+    # Availability probes are permitted; executing PEFT remains forbidden.
+    block_peft_imports()
+    import torch
+    from safetensors.torch import load_file
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
     stage, scratch = Path(request["stage"]), Path(request["scratch"])
     if (stage / "adapter_config.json").exists():
         raise ValueError("Root adapter config would trigger automatic adapter loading")
@@ -236,12 +254,23 @@ def reload_worker(request: dict) -> None:
         raise ValueError("Fresh-process standalone verification failed")
 
 
-def run_workers(request: dict) -> dict:
+def run_workers(request: dict, *, reload_only: bool = False) -> dict:
     scratch = Path(request["scratch"])
-    scratch.mkdir(parents=True, exist_ok=False)
     request_path = scratch / "request.json"
-    write_json(request_path, request)
-    for mode in ("merge", "reload"):
+    if reload_only:
+        if json.loads(request_path.read_text(encoding="utf-8")) != request:
+            raise ValueError("Recovery request differs from saved merge request")
+        if (scratch / "standalone.json").exists():
+            raise ValueError("Standalone report already exists; inspect before recovery")
+        for name in ("merge.json", "precision.json", "merged_logits.safetensors", "generations.json"):
+            if not (scratch / name).is_file():
+                raise ValueError(f"Incomplete merge evidence: {name}")
+        if not json.loads((scratch / "merge.json").read_text())["passed"]:
+            raise ValueError("Cannot recover a failed merge")
+    else:
+        scratch.mkdir(parents=True, exist_ok=False)
+        write_json(request_path, request)
+    for mode in (("reload",) if reload_only else ("merge", "reload")):
         env = os.environ.copy()
         if mode == "reload":
             env.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_DATASETS_OFFLINE="1")

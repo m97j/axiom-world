@@ -128,3 +128,24 @@ for changing checkouts; the old checkout and failure evidence remain intact.
 The updated header pins the published FP32 implementation and each release
 command checks the checkout revision and release source cleanliness. Child
 processes receive that checkout's src directory explicitly through PYTHONPATH.
+
+## Recover the completed FP32 merge after the PEFT probe failure
+
+The `Standalone verification forbids PEFT` failure during `find_spec` was a
+verification guard defect, not a failed FP32 merge. The corrected guard permits
+package discovery and rejects actual PEFT module execution. A fresh offline
+process must still load the standalone model without importing PEFT.
+
+For the existing `runs/champion-v1-release-fp32` directory, use
+`--verify-existing --dtype float32 --device cuda --output runs/champion-v1-release-fp32`.
+This validates pinned paths/source/probes and a successful merge report, checks
+payload/evidence hashes before and after reload, and finalizes the manifest and
+receipt only after standalone verification passes. It refuses an existing
+standalone report, verified receipt or upload marker; investigate those states
+rather than deleting evidence. Original merge evidence is retained. The manifest
+identifies the reported original merge implementation separately from recovery
+code; no pre-failure hash attestation is retroactively claimed.
+
+The notebook selects recovery when its output directory exists; otherwise it
+selects prepare. An incomplete directory is rejected, not silently remerged.
+Preserve the current Colab runtime and files to avoid repeating the 8B merge.

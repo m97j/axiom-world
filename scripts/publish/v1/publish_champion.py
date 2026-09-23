@@ -2,14 +2,17 @@
 """Prepare, verify, then explicitly publish the protocol-v1 standalone champion.
 
 No flag / --dry-run only checks source identity. --prepare writes a NEW local
-release directory; --publish consumes its hash-bound receipt without remerging.
+release directory; --verify-existing recovers a missing reload gate without merging;
+--publish consumes its hash-bound receipt without remerging.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.metadata
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -131,6 +134,10 @@ def prepare(args) -> None:
                "stage": str(stage.resolve()), "scratch": str(scratch.resolve()),
                "device": args.device, "probes": probes, "dtype": args.dtype}
     verification = run_workers(request)
+    finalize(args, stage, plan, verification)
+
+
+def finalize(args, stage: Path, plan: dict, verification: dict, recovery=None) -> None:
     # Bind source bytes again after workers, before issuing a successful receipt.
     validate_source(args.workspace)
     if compute_adapter_sha256(stage / "adapter") != CHAMPION_SHA:
@@ -150,12 +157,59 @@ def prepare(args) -> None:
                 "probe_sha256": fingerprint_file(args.probes),
                 "scope": "FP32 export check; historical benchmark equivalence unverified",
                 "generation": {"do_sample": False, "eos": ["<|endoftext|>", "<|im_end|>"]}}
+    if recovery is not None:
+        manifest["recovery"] = recovery
+        manifest["release_code_scope"] = "Finalization/reload tooling; recovery records reported original merge code"
     write_json(stage / "provenance" / "manifest.json", manifest)
     shutil.copy2(args.probes, stage / "provenance" / "merge_probes.json")
     receipt = {"status": "verified", "plan": plan, "verification": verification,
                "files": inventory(stage)}
     write_json(args.output / "verified.json", receipt)
     print(f"VERIFIED_LOCAL_RELEASE={args.output}; HF has not been changed")
+
+
+def verify_existing(args) -> None:
+    """Complete only the missing reload gate for the reviewed FP32 implementation."""
+    stage, scratch = args.output / "model", args.output / "verification"
+    for name in ("verified.json", "upload_started.json", "uploaded.json", "published.json"):
+        if (args.output / name).exists():
+            raise ValueError(f"Existing {name}; recovery is only for an unfinished prepare")
+    artifacts = validate_source(args.workspace)
+    request = json.loads((scratch / "request.json").read_text(encoding="utf-8"))
+    probes = json.loads(args.probes.read_text(encoding="utf-8"))
+    expected = {"base": BASE, "revision": BASE_REVISION,
+                "adapter": str((artifacts / "final_adapter").resolve()),
+                "stage": str(stage.resolve()), "scratch": str(scratch.resolve()),
+                "device": args.device, "probes": probes, "dtype": "float32"}
+    if request != expected or len(probes) < 32:
+        raise ValueError("Recovery request does not match pinned v1 source, paths, device or probes")
+    plan = remote_plan(stage / "adapter")
+    if json.loads((args.output / "plan.json").read_text()) != plan:
+        raise ValueError("Recovery migration plan changed")
+    for name in (*IDENTITY_FILES, *TOKENIZER_FILES):
+        if fingerprint_file(stage / "adapter" / name) != fingerprint_file(artifacts / "final_adapter" / name):
+            raise ValueError(f"Staged source changed: {name}")
+    for name in TOKENIZER_FILES:
+        if fingerprint_file(stage / name) != fingerprint_file(artifacts / "final_adapter" / name):
+            raise ValueError(f"Staged tokenizer changed: {name}")
+    for name in PROVENANCE_FILES:
+        if fingerprint_file(stage / "provenance" / name) != fingerprint_file(artifacts / name):
+            raise ValueError(f"Staged provenance changed: {name}")
+    before = inventory(stage)
+    evidence = {name: fingerprint_file(scratch / name) for name in
+                ("request.json", "merge.json", "precision.json", "merged_logits.safetensors", "generations.json")}
+    original_revision = "bf19c472b65ccd4fd5af848ce3f8ef1a8b189a46"
+    original_source = subprocess.check_output(["git", "-C", str(Path(__file__).resolve().parents[3]),
+        "show", original_revision + ":src/axiom_world/models/champion_release.py"])
+    recovery = {"scope": "Reload-only recovery of user-reported completed merge; no remerge",
+                "reported_merge_code_revision": original_revision,
+                "reported_merge_worker_sha256": hashlib.sha256(original_source).hexdigest(),
+                "pre_recovery_inventory": before, "pre_recovery_evidence": evidence}
+    print("[recovery] Checking saved FP32 model in a fresh offline process; no merge", flush=True)
+    verification = run_workers(request, reload_only=True)
+    if inventory(stage) != before or any(fingerprint_file(scratch / n) != h for n, h in evidence.items()):
+        raise ValueError("Recovery changed existing merge payload or evidence")
+    finalize(args, stage, plan, verification, recovery=recovery)
 
 
 def publish(output: Path, *, execute: bool, accept_precision_change: bool = False) -> None:
@@ -209,6 +263,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--prepare", action="store_true")
+    mode.add_argument("--verify-existing", action="store_true")
     mode.add_argument("--publish", action="store_true")
     mode.add_argument("--dry-run", action="store_true")
     parser.add_argument("--workspace", type=Path, default=Path.cwd())
@@ -221,7 +276,9 @@ def main() -> int:
     parser.add_argument("--accept-precision-change", action="store_true",
                         help="Acknowledge disclosed historical precision drift when publishing")
     args = parser.parse_args()
-    if args.prepare:
+    if args.verify_existing:
+        verify_existing(args)
+    elif args.prepare:
         prepare(args)
     elif args.publish or (args.output / "verified.json").is_file():
         publish(args.output, execute=args.publish, accept_precision_change=args.accept_precision_change)
