@@ -1,6 +1,8 @@
 # Protocol v1 notebooks: historical record and champion export
 
-The existing cells and their outputs are the as-run research record. They use
+The historical experiment cells and their outputs are the as-run research record.
+The B4 common header has been refreshed for publication; its earlier source and
+output remain in Git history, while the new header has no execution output yet. They use
 pre-refactor `scripts/` and `configs/experiments/` paths. Rewriting those paths
 in-place would leave old outputs attached to code that was never executed.
 They are therefore preserved. Do not use **Run All** for champion publication.
@@ -30,33 +32,31 @@ Do not regenerate frozen data with a later generator and call it the same run.
 
 ## Publish the existing champion from VS Code (no training)
 
-Only execute the **new release appendix** at the bottom of `aw_07_b4.ipynb`.
-The new cells are unexecuted. They replace the separately reported original
-`fetch_run.py; publish_champion.py --dry-run; publish_champion.py` cell with
-current paths and explicit prepare/publish stages.
+Run the **common header** in `aw_07_b4.ipynb`, then the three cells in its
+**release appendix**. Do not run the intermediate historical training cells.
+The header and release cells are unexecuted; existing experiment outputs are preserved.
 
-A local notebook can keep its outputs in VS Code while its kernel executes on
-Colab. Its local project files are **not automatically present on that server**.
-The official extension supports file upload via Explorer's **Upload to Colab**
-(see [official user guide](https://github.com/googlecolab/colab-vscode/wiki/User-Guide)).
+The publisher is deliberately v1-specific and lives at
+`scripts/publish/v1/publish_champion.py`. Its fixed champion/base/source pins are
+release policy, not generic defaults. `scripts/common/fetch_run.py` remains shared.
+The shared Hub transport accepts the legacy tag and commit message from the caller.
+Future protocol champions need their own reviewed release policy; adding CLI
+arguments alone would not make v1 probes, module checks and metadata universal.
 
-1. On your computer, from this repository, archive the reviewed local commit:
-
-   ```bash
-   mkdir -p _local
-   git archive --format=zip --output=_local/v1-release-source.zip HEAD
-   ```
-
-   Use the v1 publication commit created for this change. Check `git show --stat
-   HEAD` first if you have made other commits. `git archive HEAD` includes committed
-   files only, excluding the uncommitted CLB work, tokens and run weights.
-2. Open the **local** `aw_07_b4.ipynb`, choose your Colab kernel, then upload that
-   ZIP to the runtime. Set `ARCHIVE` in the new setup cell to its remote path.
-   Do not run the old common header or clone unpushed GitHub main.
-3. Run the new setup cell. It extracts to a new directory, installs the project
-   and existing Colab lock, and uses `HF_TOKEN` from the runtime environment or a
-   hidden prompt. It never prints or saves the token. A write-scoped token is
-   needed only for the last publish cell. Never reinstall image-owned torch/CUDA.
+1. Commit and push the release code and notebook from the local repository,
+   excluding uncommitted CLB development. The supplied header pins the implementation
+   commit, so the remote runtime loads the reviewed version rather than a moving main.
+2. Open the **Windows local** notebook in VS Code and select its Colab kernel.
+   Run the common header. `git clone` in that cell executes on Colab and creates
+   `/content/axiom-world`, not a second clone on Windows. The editable package
+   install runs on Colab too. No PyPI publication, ZIP upload, embedded source
+   snapshot or browser notebook is needed. See the
+   [official extension guide](https://github.com/googlecolab/colab-vscode/wiki/User-Guide).
+3. The public GitHub clone needs no token. The W&B environment-setting line is
+   retained as a comment for training reproduction. HF authentication uses an
+   existing environment token, Colab secrets, or a hidden prompt. A write-scoped
+   HF token is needed for the last publish cell. The existing Colab dependency
+   lock is used; image-owned torch/CUDA are not explicitly reinstalled.
 4. Run the fetch/dry-run cell, then the prepare cell. It requires enough CPU RAM,
    GPU VRAM and disk for base cache, adapter, BF16 output and probe files. An 8B
    BF16 payload is roughly 16 GB before the saved adapter and caches; provision
@@ -73,13 +73,16 @@ The official extension supports file upload via Explorer's **Upload to Colab**
    adds root merged weights plus `adapter/`, removing only the two old root
    adapter files. It guards the expected remote HEAD and retains Git history.
    A changed target stops the migration. No automatic upload retry is performed.
-7. Save the notebook locally in VS Code. Also download `verified.json`,
+7. Save the notebook locally in VS Code, then commit and push **only that
+   notebook** from your local terminal to record the run. No Git commit/push
+   is performed by the Colab cells. Also retain `verified.json`,
    `published.json` and any failure diagnostics from the runtime before it expires.
    The public manifest includes verification metrics. Notebook outputs alone do
    not preserve the large local merge payload or all diagnostics.
 
 If prepare fails, preserve its output directory and choose a new `--output` after
-fixing the cause. If upload is interrupted, inspect the remote HEAD and
+fixing the cause. Reusing the header checks the runtime checkout commit; a
+different existing checkout is preserved and requires a new runtime/directory. If upload is interrupted, inspect the remote HEAD and
 `upload_started.json`/`uploaded.json` before attempting recovery; do not remove
 markers and blindly retry. `published.json` means remote sizes/hashes were
 checked; it is not a new remote GPU inference test or a TPN scan result.

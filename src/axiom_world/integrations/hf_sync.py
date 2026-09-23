@@ -276,7 +276,8 @@ def release_inventory(repo_id: str, revision: str) -> dict[str, dict]:
 
 
 def commit_model_release(*, repo_id: str, stage: Path, expected_head: str,
-                         legacy_revision: str, delete_paths: list[str]) -> str:
+                         legacy_revision: str, delete_paths: list[str],
+                         legacy_tag: str, commit_message: str) -> str:
     """History-preserving atomic migration; no storage-object deletion or retries."""
     from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
 
@@ -284,11 +285,13 @@ def commit_model_release(*, repo_id: str, stage: Path, expected_head: str,
         raise ValueError("Exact target and legacy revisions required")
     if not set(delete_paths).issubset({"adapter_config.json", "adapter_model.safetensors"}):
         raise ValueError("Only legacy root adapter files may be removed")
+    if not legacy_tag or not commit_message.strip():
+        raise ValueError("Explicit legacy tag and commit message required")
     api = HfApi()
     if api.repo_info(repo_id, repo_type="model").sha != expected_head:
         raise ValueError("Target changed; prepare and review a new release")
     tags = {tag.name: tag.target_commit for tag in api.list_repo_refs(repo_id, repo_type="model").tags}
-    tag_name = "protocol-v1-adapter"
+    tag_name = legacy_tag
     if tag_name in tags and tags[tag_name] != legacy_revision:
         raise ValueError("Legacy tag already points elsewhere")
     if tag_name not in tags:
@@ -299,5 +302,5 @@ def commit_model_release(*, repo_id: str, stage: Path, expected_head: str,
                       for p in sorted(stage.rglob("*")) if p.is_file())
     commit = api.create_commit(repo_id=repo_id, repo_type="model", revision="main",
                               parent_commit=expected_head, operations=operations,
-                              commit_message="Publish verified BF16 v1 champion and preserve adapter")
+                              commit_message=commit_message)
     return commit.oid

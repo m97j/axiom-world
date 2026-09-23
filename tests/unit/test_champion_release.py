@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def script(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / f"scripts/common/{name}.py")
+    folder = "scripts/publish/v1" if name == "publish_champion" else "scripts/common"
+    spec = importlib.util.spec_from_file_location(name, ROOT / folder / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -107,15 +108,30 @@ def test_atomic_migration_preserves_history_and_has_parent_guard(monkeypatch, tm
     (tmp_path / "config.json").write_text("{}")
     sha = hf_sync.commit_model_release(repo_id="o/r", stage=tmp_path,
         expected_head="a" * 40, legacy_revision="a" * 40,
-        delete_paths=["adapter_config.json", "adapter_model.safetensors"])
+        delete_paths=["adapter_config.json", "adapter_model.safetensors"],
+        legacy_tag="example-adapter", commit_message="Publish example model")
     assert sha == "b" * 40
     assert [c[0] for c in calls] == ["tag", "commit"]
+    assert calls[0][1]["tag"] == "example-adapter"
     commit = calls[-1][1]
+    assert commit["commit_message"] == "Publish example model"
     assert commit["parent_commit"] == "a" * 40
     assert [o.path_in_repo for o in commit["operations"]] == [
         "adapter_config.json", "adapter_model.safetensors", "config.json"]
     calls.clear()
     with pytest.raises(ValueError, match="Target changed"):
         hf_sync.commit_model_release(repo_id="o/r", stage=tmp_path,
-            expected_head="c" * 40, legacy_revision="a" * 40, delete_paths=[])
+            expected_head="c" * 40, legacy_revision="a" * 40, delete_paths=[],
+            legacy_tag="example-adapter", commit_message="Publish example model")
     assert calls == []
+
+
+def test_v1_publisher_defaults_resolve_from_relocated_script(monkeypatch):
+    publisher = script("publish_champion")
+    def inspect(args):
+        assert args.card == ROOT / "hf_cards/v1/model_card_aw-qwen3-8b-v1.md"
+        assert args.probes == ROOT / "configs/releases/v1_merge_probes.json"
+        assert args.card.is_file() and args.probes.is_file()
+    monkeypatch.setattr(publisher, "prepare", inspect)
+    monkeypatch.setattr(sys, "argv", ["publish_champion", "--prepare"])
+    assert publisher.main() == 0

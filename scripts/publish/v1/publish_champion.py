@@ -111,7 +111,7 @@ def prepare(args) -> None:
     for name in PROVENANCE_FILES:
         shutil.copy2(artifacts / name, stage / "provenance" / name)
     base_files = hf_sync.release_inventory(BASE, BASE_REVISION)
-    shutil.copy2(Path(__file__).resolve().parents[2] / "licenses/Apache-2.0.txt", stage / "LICENSE")
+    shutil.copy2(Path(__file__).resolve().parents[3] / "licenses/Apache-2.0.txt", stage / "LICENSE")
     shutil.copy2(hf_sync.download_file(BASE, "README.md", revision=BASE_REVISION),
                  stage / "provenance" / "base_model_card.md")
     for name in ("NOTICE",):
@@ -178,7 +178,9 @@ def publish(output: Path, *, execute: bool) -> None:
         json.dump(expected_plan, stream)
     revision = hf_sync.commit_model_release(
         repo_id=TARGET_REPO, stage=stage, expected_head=expected_plan["expected_head"],
-        legacy_revision=LEGACY_REVISION, delete_paths=expected_plan["delete_paths"])
+        legacy_revision=LEGACY_REVISION, delete_paths=expected_plan["delete_paths"],
+        legacy_tag="protocol-v1-adapter",
+        commit_message="Publish verified BF16 v1 champion and preserve adapter")
     write_json(output / "uploaded.json", {"revision": revision, "repo": TARGET_REPO})
     remote = hf_sync.release_inventory(TARGET_REPO, revision)
     for file in receipt["files"]:
@@ -197,7 +199,7 @@ def publish(output: Path, *, execute: bool) -> None:
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--prepare", action="store_true")
