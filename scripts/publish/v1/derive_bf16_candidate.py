@@ -65,7 +65,7 @@ def derive(source: Path, output: Path, device: str):
     verification = {"dtype": "bfloat16", "standalone": read(scratch / "standalone.json"),
                     "fp32_vs_bf16": read(scratch / "cast_drift.json"),
                     "scope": "Serialization correctness only; task comparison pending"}
-    manifest = {"method": "Verified FP32 merged source cast to BF16; not a new LoRA merge",
+    manifest = {"method": "Verified FP32 merged weights cast to BF16 with native non-persistent buffers preserved; not a new LoRA merge",
                 "source_receipt_sha256": hashlib.sha256((source / "verified.json").read_bytes()).hexdigest(),
                 "source_inventory": receipt["files"], "verification": verification}
     write_json(stage / "provenance/manifest.json", manifest)

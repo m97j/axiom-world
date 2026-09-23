@@ -98,3 +98,33 @@ def test_tiny_fp32_merge_and_fresh_offline_reload(tmp_path, tied, monkeypatch):
         assert receipt["verification"]["standalone"]["peft_imported"] is False
         assert "fp32_vs_bf16" in receipt["verification"]
         assert inventory(stage) == before
+
+
+def test_qwen3_bf16_cast_preserves_rope_and_reload_logits(tmp_path):
+    torch = pytest.importorskip("torch")
+    from transformers import Qwen3Config, Qwen3ForCausalLM
+
+    from axiom_world.models.champion_release import cast_weights_preserving_runtime_buffers
+
+    torch.manual_seed(23)
+    model = Qwen3ForCausalLM(Qwen3Config(vocab_size=32, hidden_size=32,
+        intermediate_size=64, num_hidden_layers=1, num_attention_heads=2,
+        num_key_value_heads=2, head_dim=16, max_position_embeddings=256)).eval()
+    rotary = model.model.rotary_emb
+    original = rotary.inv_freq.clone()
+    assert not torch.equal(original, original.bfloat16().float())
+    # Reproduce the faulty path: to() rounds a buffer absent from state_dict.
+    model.to(torch.bfloat16)
+    assert not torch.equal(rotary.inv_freq.float(), original)
+    assert not any("inv_freq" in key for key in model.state_dict())
+    rotary.inv_freq = original
+    cast_weights_preserving_runtime_buffers(model, torch.bfloat16)
+    assert rotary.inv_freq.dtype == torch.float32
+    assert torch.equal(rotary.inv_freq, original)
+    model.save_pretrained(tmp_path)
+    reloaded = Qwen3ForCausalLM.from_pretrained(tmp_path, torch_dtype=torch.bfloat16,
+        attn_implementation="sdpa", local_files_only=True).eval()
+    assert torch.equal(reloaded.model.rotary_emb.inv_freq, original)
+    inputs = torch.arange(128).remainder(32).unsqueeze(0)
+    with torch.inference_mode():
+        assert torch.equal(model(inputs).logits, reloaded(inputs).logits)

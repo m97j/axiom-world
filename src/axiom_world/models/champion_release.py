@@ -251,8 +251,25 @@ def reload_worker(request: dict) -> None:
     result["peft_imported"] = any(k == "peft" or k.startswith("peft.") for k in sys.modules)
     result["passed"] = result["passed"] and not result["peft_imported"]
     write_json(scratch / "standalone.json", result)
+    print(json.dumps({"standalone": result}, indent=2), flush=True)
     if not result["passed"]:
         raise ValueError("Fresh-process standalone verification failed")
+
+
+def cast_weights_preserving_runtime_buffers(model, dtype):
+    """Keep non-persistent runtime buffers as initialized by the native loader.
+
+    Module.to also rounds RoPE inv_freq; save_pretrained omits that buffer,
+    so a subsequent load would regenerate different (FP32) frequencies.
+    Preserve original tensor objects, including aliases such as original_inv_freq.
+    """
+    buffers = [(module, name, module._buffers[name]) for module in model.modules()
+               for name in module._non_persistent_buffers_set
+               if module._buffers.get(name) is not None]
+    model.to(dtype=dtype)
+    for module, name, value in buffers:
+        module._buffers[name] = value
+    return model
 
 
 def cast_worker(request: dict) -> None:
@@ -275,7 +292,7 @@ def cast_worker(request: dict) -> None:
     model.eval()
     print("[cast probe] FP32 source", flush=True)
     before, before_gen = _probe(model, tokenizer, request["probes"])
-    model.to(dtype=torch.bfloat16)
+    cast_weights_preserving_runtime_buffers(model, torch.bfloat16)
     _check_saved_modules(model, Path(request["adapter"]))
     print("[cast probe] BF16 candidate", flush=True)
     after, after_gen = _probe(model, tokenizer, request["probes"])
