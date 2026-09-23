@@ -73,3 +73,28 @@ def test_tiny_fp32_merge_and_fresh_offline_reload(tmp_path, tied, monkeypatch):
     import json
     config = json.loads((stage / "config.json").read_text())
     assert config["tie_word_embeddings"] is False
+
+    # Derive and offline-reload a BF16 candidate without changing the FP32 source.
+    if not tied:
+        import importlib.util
+        from pathlib import Path
+
+        from axiom_world.models.champion_release import inventory, write_json
+        spec = importlib.util.spec_from_file_location("derive", Path(__file__).resolve().parents[2]
+            / "scripts/publish/v1/derive_bf16_candidate.py")
+        derive = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(derive)
+        (stage / "provenance").mkdir()
+        write_json(stage / "provenance/manifest.json", {"verification": report})
+        write_json(stage / "provenance/merge_probes.json", request["probes"])
+        before = inventory(stage)
+        write_json(tmp_path / "verified.json", {"status": "verified", "verification": report, "files": before})
+        candidate = tmp_path / "bf16-candidate"
+        derive.derive(tmp_path, candidate, "cpu")
+        receipt = json.loads((candidate / "verified.json").read_text())
+        assert receipt["status"] == "verified_candidate"
+        assert receipt["verification"]["dtype"] == "bfloat16"
+        assert receipt["verification"]["standalone"]["max_abs"] == 0
+        assert receipt["verification"]["standalone"]["peft_imported"] is False
+        assert "fp32_vs_bf16" in receipt["verification"]
+        assert inventory(stage) == before

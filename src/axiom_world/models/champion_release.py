@@ -226,32 +226,68 @@ def reload_worker(request: dict) -> None:
     if (stage / "adapter_config.json").exists():
         raise ValueError("Root adapter config would trigger automatic adapter loading")
     tokenizer = AutoTokenizer.from_pretrained(stage, local_files_only=True, trust_remote_code=False)
-    if request.get("dtype") != "float32":
-        raise ValueError("Standalone request must specify float32")
+    if request.get("dtype") not in ("float32", "bfloat16"):
+        raise ValueError("Standalone request must specify float32 or bfloat16")
+    dtype = getattr(torch, request["dtype"])
     torch.set_float32_matmul_precision("highest")
     model, loading = AutoModelForCausalLM.from_pretrained(
-        stage, dtype=torch.float32, device_map=request["device"],
+        stage, dtype=dtype, device_map=request["device"],
         attn_implementation="sdpa", local_files_only=True, trust_remote_code=False,
         output_loading_info=True)
     if any(loading.get(key) for key in ["missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs"]):
         raise ValueError(f"Standalone state-dict load was incomplete: {loading}")
     if getattr(model.config, "quantization_config", None):
         raise ValueError("Unexpected quantization")
-    if any(p.dtype != torch.float32 for p in model.parameters() if p.is_floating_point()):
-        raise ValueError("Standalone model is not wholly FP32")
+    if any(p.dtype != dtype for p in model.parameters() if p.is_floating_point()):
+        raise ValueError("Standalone model dtype differs from requested dtype")
     _check_saved_modules(model, stage / "adapter")
     actual, generations = _probe(model, tokenizer, request["probes"])
     result = compare_logits(load_file(scratch / "merged_logits.safetensors"), actual,
                             json.loads((scratch / "generations.json").read_text()), generations)
-    # Same serialized FP32 weights, device and backend: require exact replay.
+    # Same serialized weights, dtype, device and backend: require exact replay.
     result["passed"] = result["max_abs"] == 0 and result["generation_agreement"] == 1
-    result["dtype"] = "float32"
+    result["dtype"] = request["dtype"]
     result["offline"] = True
     result["peft_imported"] = any(k == "peft" or k.startswith("peft.") for k in sys.modules)
     result["passed"] = result["passed"] and not result["peft_imported"]
     write_json(scratch / "standalone.json", result)
     if not result["passed"]:
         raise ValueError("Fresh-process standalone verification failed")
+
+
+def cast_worker(request: dict) -> None:
+    """Derived candidate only: preserve source and report (not waive) precision drift."""
+    block_peft_imports()
+    import torch
+    from safetensors.torch import save_file
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    if request.get("dtype") != "bfloat16":
+        raise ValueError("Cast candidate must specify bfloat16")
+    torch.set_float32_matmul_precision("highest")
+    model, loading = AutoModelForCausalLM.from_pretrained(
+        request["source_model"], dtype=torch.float32, device_map=request["device"],
+        attn_implementation="sdpa", local_files_only=True, trust_remote_code=False,
+        output_loading_info=True)
+    if any(loading.get(k) for k in ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")):
+        raise ValueError(f"Incomplete FP32 source loading: {loading}")
+    tokenizer = AutoTokenizer.from_pretrained(request["source_model"], local_files_only=True)
+    model.eval()
+    print("[cast probe] FP32 source", flush=True)
+    before, before_gen = _probe(model, tokenizer, request["probes"])
+    model.to(dtype=torch.bfloat16)
+    _check_saved_modules(model, Path(request["adapter"]))
+    print("[cast probe] BF16 candidate", flush=True)
+    after, after_gen = _probe(model, tokenizer, request["probes"])
+    scratch = Path(request["scratch"])
+    report = compare_logits(before, after, before_gen, after_gen)
+    write_json(scratch / "cast_drift.json", report)
+    print(json.dumps({"fp32_vs_bf16": report, "scope": "Drift observation, NOT an equivalence pass"}, indent=2))
+    if any(p.dtype != torch.bfloat16 for p in model.parameters() if p.is_floating_point()):
+        raise ValueError("Candidate not wholly BF16")
+    model.save_pretrained(request["stage"], safe_serialization=True, max_shard_size="5GB")
+    save_file(after, scratch / "merged_logits.safetensors")
+    write_json(scratch / "generations.json", after_gen)
 
 
 def run_workers(request: dict, *, reload_only: bool = False) -> dict:
@@ -285,4 +321,4 @@ def run_workers(request: dict, *, reload_only: bool = False) -> dict:
 
 if __name__ == "__main__":
     request = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-    {"merge": merge_worker, "reload": reload_worker}[sys.argv[1]](request)
+    {"merge": merge_worker, "reload": reload_worker, "cast": cast_worker}[sys.argv[1]](request)

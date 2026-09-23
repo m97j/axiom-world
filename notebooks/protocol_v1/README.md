@@ -187,3 +187,36 @@ After successful FP32 prepare, run the updated header and the paired-comparison
 cell only. Do not rerun prepare/recovery on an already verified directory. The
 final publication cell now requires a completed comparison bound to the exact
 verified receipt, plus explicit review of both task results and precision drift.
+
+## BF16 deployment audit (decision fixed before seeing BF16 task results)
+
+Preserve the verified FP32 release and its completed comparison. Derive a separate
+BF16 candidate with `derive_bf16_candidate.py`; never modify or round the FP32
+source in place. It casts the saved merged FP32 weights, reports the 32-probe
+precision drift without relabelling a failed equivalence check as a pass, and
+requires exact BF16 save/reload replay with no PEFT import. Its receipt status is
+`verified_candidate`, which the publisher deliberately does not accept.
+
+Run the same full paired task comparison with BF16 as candidate. This reruns the
+original adapter as a control (3000 completions), then `review_precision.py`
+combines both precision reports, verifies input identity and summaries, records
+whether the reference repeated exactly, and adds exploratory paired-bootstrap
+95% intervals (10000 resamples, seed 42; unadjusted, not equivalence tests).
+
+Deployment rule for this audit: prefer BF16 only if every suite has at least the
+reference adapter's observed pass count, and no increase in schema failures or
+truncation, with the repeated reference matching the earlier control. Otherwise
+retain FP32 as the already tested, disclosed precision variant, including its
+observed compositional-OOD regression. If the control itself changes, do not issue
+an automatic precision recommendation. This is a conservative deployment rule,
+not a preregistered scientific hypothesis or proof of population non-inferiority.
+It was chosen after the FP32 results but before the BF16 task results; report both.
+Do not cherry-pick a new champion or compare a seed-42 candidate against a 3-seed
+historical mean as an acceptance threshold.
+
+The public release remains blocked pending final model-card/evidence packaging
+and review of precision_review.json. This audit performs no training, conversion
+uploads, or email sending. Once precision is selected, publish the standard root
+checkpoint with the original adapter and disclose the exact dtype and both task
+comparisons in the release evidence, then reply with the published repo revision.
+Keep this Colab runtime: neither GitHub nor the notebook stores its model files.

@@ -115,11 +115,12 @@ def worker(request, arm):
         print("[preflight] All 1500 task prompt token sequences match", flush=True)
         model, tokenizer = build_for_inference(config, request["adapter"])
     else:
-        model = AutoModelForCausalLM.from_pretrained(request["model"], dtype=torch.float32,
+        candidate_dtype = getattr(torch, request["candidate_dtype"])
+        model = AutoModelForCausalLM.from_pretrained(request["model"], dtype=candidate_dtype,
             device_map="cuda", attn_implementation="sdpa", local_files_only=True)
         tokenizer = AutoTokenizer.from_pretrained(request["model"], local_files_only=True)
-        if any(p.dtype != torch.float32 for p in model.parameters() if p.is_floating_point()):
-            raise ValueError("Candidate did not load in FP32")
+        if any(p.dtype != candidate_dtype for p in model.parameters() if p.is_floating_point()):
+            raise ValueError("Candidate dtype differs from declared receipt")
     tokenizer.padding_side = "left"
     model.eval()
     stop_ids = sorted({tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|im_end|>")})
@@ -179,6 +180,15 @@ def main():
     from huggingface_hub import hf_hub_download
 
     from axiom_world.models.champion_release import inventory
+    if not args.data_only:
+        release = args.release.resolve()
+        receipt = read(release / "verified.json")
+        stage = release / "model"
+        if (receipt.get("status") not in ("verified", "verified_candidate")
+                or inventory(stage) != receipt["files"]
+                or not receipt["verification"]["standalone"]["passed"]
+                or receipt["verification"]["dtype"] not in ("float32", "bfloat16")):
+            raise ValueError("Need unchanged, standalone-verified precision candidate")
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     root = Path(__file__).resolve().parents[3]
@@ -205,14 +215,9 @@ def main():
                "max_new_tokens": 1024, "attention": "sdpa", "seed": 42,
                "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     if not args.data_only:
-        release = args.release.resolve()
-        receipt = read(release / "verified.json")
-        stage = release / "model"
-        if (receipt.get("status") != "verified" or inventory(stage) != receipt["files"]
-                or not receipt["verification"]["standalone"]["passed"]
-                or receipt["verification"]["dtype"] != "float32"):
-            raise ValueError("Release must be the verified, unchanged FP32 payload")
         request.update(model=str(stage), adapter=str(stage / "adapter"),
+                       candidate_dtype=receipt["verification"]["dtype"],
+                       source_fp32_receipt_sha256=receipt.get("source_receipt_sha256"),
                        release_receipt_sha256=hashlib.sha256((release / "verified.json").read_bytes()).hexdigest())
     write(out / "request.json", request)
     env = os.environ.copy()

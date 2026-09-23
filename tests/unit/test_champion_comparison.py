@@ -38,3 +38,30 @@ def test_infra_error_is_not_a_task_failure():
     b["verdict"]["status"] = "infra_error"
     with pytest.raises(ValueError, match="Infrastructure"):
         module.summarize_pairs([row("a", True)], [b])
+
+
+def test_precision_review_preserves_regression_and_rejects_changed_source(monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "compare_champion", module)
+    spec = importlib.util.spec_from_file_location("review_precision",
+        Path(__file__).resolve().parents[2] / "scripts/publish/v1/review_precision.py")
+    review = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(review)
+    reference = [row("a", True), row("b", False)]
+    candidate = [row("a", False), row("b", False)]
+    request = dict.fromkeys(("legacy_code", "data_revision", "freeze", "max_new_tokens",
+                            "attention", "seed", "batch_size"), "same")
+    fp = {"request": {**request, "release_receipt_sha256": "bound"},
+          "suites": module.summarize_pairs(reference, reference)}
+    bf = {"request": {**request, "candidate_dtype": "bfloat16", "source_fp32_receipt_sha256": "bound"},
+          "suites": module.summarize_pairs(reference, candidate)}
+    monkeypatch.setattr(review, "load_comparison", lambda folder:
+        (fp, {"reference": reference, "candidate": reference}) if folder == "fp"
+        else (bf, {"reference": reference, "candidate": candidate}))
+    result = review.review("fp", "bf")
+    assert result["suggested_precision"] == "float32"
+    assert not result["publication_approved"]
+    assert result["suites"]["eval_id"]["bf16_vs_adapter_ci"]["delta"] == -0.5
+    bf["request"]["source_fp32_receipt_sha256"] = "changed"
+    with pytest.raises(ValueError, match="does not derive"):
+        review.review("fp", "bf")
