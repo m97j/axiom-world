@@ -1,0 +1,222 @@
+{
+  "status": "verified",
+  "plan": {
+    "target_repo": "m97j/aw-qwen3-8b-v1",
+    "expected_head": "f33d2d16125e89eb38d4b668a2c20a6929ad3784",
+    "legacy_revision": "f33d2d16125e89eb38d4b668a2c20a6929ad3784",
+    "legacy_tag": "protocol-v1-adapter",
+    "delete_paths": [
+      "adapter_config.json",
+      "adapter_model.safetensors"
+    ],
+    "history_rewrite": false
+  },
+  "verification": {
+    "gates": {
+      "max_abs": 0.001,
+      "mean_abs": 0.0001,
+      "top1_agreement": 0.99,
+      "generation_agreement": 0.9
+    },
+    "dtype": "float32",
+    "historical_comparison_gates": {
+      "max_abs": 0.5,
+      "mean_abs": 0.03,
+      "top1_agreement": 0.99,
+      "generation_agreement": 0.9
+    },
+    "precision": {
+      "reference": "BF16-base PEFT default promotion, not a replay of the historical evaluator",
+      "scope": "Engineering probes only; historical benchmark equivalence unverified",
+      "historical_vs_fp32_adapter": {
+        "max_abs": 5.113002300262451,
+        "mean_abs": 0.17890014208428326,
+        "top1_agreement": 0.9701492537313433,
+        "generation_agreement": 0.3125,
+        "passed": false
+      },
+      "historical_vs_fp32_merged": {
+        "max_abs": 5.112964153289795,
+        "mean_abs": 0.17890022669651248,
+        "top1_agreement": 0.9701492537313433,
+        "generation_agreement": 0.3125,
+        "passed": false
+      }
+    },
+    "probe_count": 32,
+    "merge": {
+      "max_abs": 0.0002315044403076172,
+      "mean_abs": 1.0057879286915258e-05,
+      "top1_agreement": 1.0,
+      "generation_agreement": 1.0,
+      "passed": true,
+      "runtime": {
+        "device": "cuda",
+        "torch_cuda": "12.8",
+        "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "attention": "sdpa",
+        "reference": "BF16-loaded base and PEFT adapter promoted together to FP32",
+        "dtype": "float32",
+        "matmul_precision": "highest",
+        "gates": {
+          "max_abs": 0.001,
+          "mean_abs": 0.0001,
+          "top1_agreement": 0.99,
+          "generation_agreement": 0.9
+        }
+      }
+    },
+    "standalone": {
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "top1_agreement": 1.0,
+      "generation_agreement": 1.0,
+      "passed": true,
+      "dtype": "float32",
+      "offline": true,
+      "peft_imported": false
+    }
+  },
+  "files": [
+    {
+      "path": "LICENSE",
+      "size": 11358,
+      "sha256": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "README.md",
+      "size": 6699,
+      "sha256": "sha256:f4828a838a08d0657d90cc25799936cb76b607331e445b93e25a768e4c507df2"
+    },
+    {
+      "path": "adapter/README.md",
+      "size": 147,
+      "sha256": "sha256:09c64e312de8fdffc61897d9569d491051cd045b767979dc77ab0bf1c6780bd5"
+    },
+    {
+      "path": "adapter/adapter_config.json",
+      "size": 1132,
+      "sha256": "sha256:a05f011c269e28503233830df2435dded868fe6a31085f3f5cfa151f22741c4a"
+    },
+    {
+      "path": "adapter/adapter_model.safetensors",
+      "size": 2663975192,
+      "sha256": "sha256:5ba729c8dedb25ea4b440ca6e85b49a08c3c62bd973a5223fb319974a59e4f4a"
+    },
+    {
+      "path": "adapter/chat_template.jinja",
+      "size": 4116,
+      "sha256": "sha256:87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+    },
+    {
+      "path": "adapter/tokenizer.json",
+      "size": 11422650,
+      "sha256": "sha256:be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+    },
+    {
+      "path": "adapter/tokenizer_config.json",
+      "size": 697,
+      "sha256": "sha256:ddb9f850ca6559a928bb25d511f72e3c6eff81395334a4e0eeec670448333d09"
+    },
+    {
+      "path": "chat_template.jinja",
+      "size": 4116,
+      "sha256": "sha256:87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+    },
+    {
+      "path": "config.json",
+      "size": 1594,
+      "sha256": "sha256:596cf12480ec5a6320c00dd883cf37a26c4da3f1441d81ebd949f7a404a56fa8"
+    },
+    {
+      "path": "generation_config.json",
+      "size": 187,
+      "sha256": "sha256:3e6c1ea4246ed28eff7ea5730d0c73197f1e2ec900bb9e163af25d2ea1bf2206"
+    },
+    {
+      "path": "model-00001-of-00007.safetensors",
+      "size": 4978655576,
+      "sha256": "sha256:c0c56d1efaafd9a14b39437276801affd97f89b4088e2dcce3b159705f3ef849"
+    },
+    {
+      "path": "model-00002-of-00007.safetensors",
+      "size": 4832048600,
+      "sha256": "sha256:f1ac4f92314f7f08dc48d51a4e8cc53bd41df7b83141bb38d9c44407c4f57101"
+    },
+    {
+      "path": "model-00003-of-00007.safetensors",
+      "size": 4832048616,
+      "sha256": "sha256:a65722bda5d453e642a8449333d1b129457b873d381c793017b805ab15b2904c"
+    },
+    {
+      "path": "model-00004-of-00007.safetensors",
+      "size": 4999855536,
+      "sha256": "sha256:3b84c5f893fb4b4fe987899cb79a717a15af68f78969463e39a1dfcff776d9e5"
+    },
+    {
+      "path": "model-00005-of-00007.safetensors",
+      "size": 4832048672,
+      "sha256": "sha256:943a65b4300951b1a58c358f98d910027f71caf1f2f9ed424f992025fc5dc00a"
+    },
+    {
+      "path": "model-00006-of-00007.safetensors",
+      "size": 4832048672,
+      "sha256": "sha256:826b363a7f64d5861f061a12054f44b832fbf3ce7a5278466dea05e161d4b4e9"
+    },
+    {
+      "path": "model-00007-of-00007.safetensors",
+      "size": 3456281528,
+      "sha256": "sha256:679e26394b735a096f8821317650359d2bff6c9f3a57022c10aa27111d1fa2e2"
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "size": 32914,
+      "sha256": "sha256:f63137133012010e809ba10f8010e249ddc52960f57e247dccc784a4dcdd3a59"
+    },
+    {
+      "path": "provenance/MODIFICATIONS.md",
+      "size": 291,
+      "sha256": "sha256:2de60416240f50b944fb94580af3aa92888291c826b1e666cd2faf592c338c3c"
+    },
+    {
+      "path": "provenance/base_model_card.md",
+      "size": 2938,
+      "sha256": "sha256:0eb9f991baa4f92c9ef708d1e9c7a01ae5b19d05516d38f8833549aa8b06a07e"
+    },
+    {
+      "path": "provenance/lineage.json",
+      "size": 906,
+      "sha256": "sha256:79ff005d826682f1e273b9607b0248b926d3372b5ed95822152120a704f044b9"
+    },
+    {
+      "path": "provenance/manifest.json",
+      "size": 3369,
+      "sha256": "sha256:52d9365d3a731ee70a338def4c341f6c7e56212bdce98848b59114dee2417a97"
+    },
+    {
+      "path": "provenance/merge_probes.json",
+      "size": 3171,
+      "sha256": "sha256:2527ace9c192e696b41993888a22584fbf8339ea0c5c5781521f2b5e42f0fb63"
+    },
+    {
+      "path": "provenance/resolved_config.yaml",
+      "size": 1144,
+      "sha256": "sha256:c3f594884bd21135c928dadc896ae942572399af949e1ae3a98e247575809f9a"
+    },
+    {
+      "path": "provenance/run_card.json",
+      "size": 483,
+      "sha256": "sha256:6cc951576c8c14bd5315b64987e5f27aee1b9f23ce0f8c0dd6f7fb119aea7c79"
+    },
+    {
+      "path": "tokenizer.json",
+      "size": 11422650,
+      "sha256": "sha256:be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "size": 697,
+      "sha256": "sha256:ddb9f850ca6559a928bb25d511f72e3c6eff81395334a4e0eeec670448333d09"
+    }
+  ]
+}

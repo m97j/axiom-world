@@ -1,0 +1,11 @@
+{
+  "target_repo": "m97j/aw-qwen3-8b-v1",
+  "expected_head": "f33d2d16125e89eb38d4b668a2c20a6929ad3784",
+  "legacy_revision": "f33d2d16125e89eb38d4b668a2c20a6929ad3784",
+  "legacy_tag": "protocol-v1-adapter",
+  "delete_paths": [
+    "adapter_config.json",
+    "adapter_model.safetensors"
+  ],
+  "history_rewrite": false
+}

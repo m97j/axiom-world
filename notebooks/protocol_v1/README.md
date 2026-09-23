@@ -1,5 +1,12 @@
 # Protocol v1 notebooks: historical record and champion export
 
+> **B4v2 publication completed (2026-09-23).** `aw_07_b4.ipynb` now contains
+> the web Colab execution archive, including failed attempts and successful recovery.
+> Do not rerun publication or evaluations to remove error logs. See
+> [publication evidence](evidence/champion_release_20260923/README.md).
+> The release/recovery instructions below document the workflow as it developed;
+> they are not pending actions for the already published checkpoint.
+
 The historical experiment cells and their outputs are the as-run research record.
 The B4 common header has been refreshed for publication; its earlier source and
 output remain in Git history, while the new header has no execution output yet. They use

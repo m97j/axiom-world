@@ -3,9 +3,9 @@
 # accuracy of this probe on eval-ID). Budget is deliberately small and FROZEN:
 # 200 steps, LR 1e-5 — never tuned per candidate.
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: probe-playworld-sft
 track: track_b_two_stage

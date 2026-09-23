@@ -1,8 +1,8 @@
 # Track B — B1: Base -> Phase-1 general SFT (protocol §5.1)
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: b1-general-sft
 track: track_b_two_stage

@@ -2,9 +2,9 @@
 # Fixed anchor for all headline comparisons; run once after G3 freeze.
 # The instruct model generates its own think block, so no opener seed.
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_instruct.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_instruct.yaml
 
 experiment_name: eval-playworld-c1-instruct-zeroshot
 track: system_benchmark

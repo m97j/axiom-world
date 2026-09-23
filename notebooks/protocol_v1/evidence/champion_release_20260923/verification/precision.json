@@ -1,0 +1,18 @@
+{
+  "reference": "BF16-base PEFT default promotion, not a replay of the historical evaluator",
+  "scope": "Engineering probes only; historical benchmark equivalence unverified",
+  "historical_vs_fp32_adapter": {
+    "max_abs": 5.113002300262451,
+    "mean_abs": 0.17890014208428326,
+    "top1_agreement": 0.9701492537313433,
+    "generation_agreement": 0.3125,
+    "passed": false
+  },
+  "historical_vs_fp32_merged": {
+    "max_abs": 5.112964153289795,
+    "mean_abs": 0.17890022669651248,
+    "top1_agreement": 0.9701492537313433,
+    "generation_agreement": 0.3125,
+    "passed": false
+  }
+}

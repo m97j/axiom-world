@@ -1,8 +1,8 @@
 # Track A — A1: Base -> PlayWorld SFT (protocol §5.1)
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: a1-playworld-sft
 track: track_a_direct

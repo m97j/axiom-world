@@ -28,9 +28,8 @@ import argparse
 import json
 from pathlib import Path
 
-from huggingface_hub import hf_hub_download
-
 from axiom_world.core.fingerprints import fingerprint_payload
+from axiom_world.integrations.hf_sync import download_file
 
 
 def _lineage_style_fingerprint(path: Path) -> str:
@@ -53,7 +52,7 @@ def main() -> int:
     for spec in args.candidate:
         repo, _, repo_path = spec.partition(":")
         try:
-            local = Path(hf_hub_download(repo_id=repo, filename=repo_path,
+            local = Path(download_file(repo_id=repo, filename=repo_path,
                                          repo_type="dataset"))
             fp = _lineage_style_fingerprint(local)
             candidates.append({"repo": repo, "path": repo_path,

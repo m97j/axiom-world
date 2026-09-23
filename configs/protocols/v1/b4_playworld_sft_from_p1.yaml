@@ -1,9 +1,9 @@
 # Track B — B4: P1 champion -> PlayWorld SFT (protocol §5.1)
 # Lineage is REQUIRED: this recipe will not validate without a parent adapter.
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: b4-playworld-sft-from-p1
 track: track_b_two_stage

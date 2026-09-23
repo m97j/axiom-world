@@ -1,11 +1,11 @@
 # Track B — B2: Base -> Phase-1 general SFT on the rejection-sampled corpus
 # (protocol §5.1, RQ2 upstream arm). Identical recipe to B1 except the data
 # source: responses are base-model samples gated by ExactAnswerVerifier
-# (scripts/build_p1_rs_data.py), so B1 vs B2 isolates response provenance.
+# (scripts/data/v1/build_p1_rs_data.py), so B1 vs B2 isolates response provenance.
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: b2-general-sft-rs
 track: track_b_two_stage

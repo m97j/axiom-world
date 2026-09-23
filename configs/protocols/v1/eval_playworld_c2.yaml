@@ -1,10 +1,10 @@
 # C2 — reference baseline: Qwen3-8B instruct, few-shot k=3 (protocol §4/§5.1).
-# Exemplars are FROZEN (scripts/build_fewshot_exemplars.py, train families
+# Exemplars are FROZEN (scripts/data/v1/build_fewshot_exemplars.py, train families
 # only — never eval families) and injected identically for every episode.
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_instruct.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_instruct.yaml
 
 experiment_name: eval-playworld-c2-instruct-fewshot
 track: system_benchmark

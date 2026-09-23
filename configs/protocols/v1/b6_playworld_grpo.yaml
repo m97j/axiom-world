@@ -8,11 +8,12 @@
 # Rewards: verifier_reward_function(default_playworld_verifier) — online,
 # episode-level, same verifier as eval (no reward-model drift).
 # Launch (Colab):
-#   python scripts/run_experiment.py \
-#     --config configs/experiments/b6_playworld_grpo.yaml \
+#   python scripts/common/run_experiment.py \
+#     --config configs/protocols/v1/b6_playworld_grpo.yaml \
+#     --eval-freeze-manifest data/v1/eval_suites/freeze_manifest.json \
 #     --parent-adapter-dir runs/<b4v2-run>/artifacts/final_adapter \
 #     --override lineage.parent_adapter.sha256=<b4v2 sha> \
-#     --override data.source.local_path=data/train/playworld_prompts.jsonl \
+#     --override data.source.local_path=data/v1/train/playworld_prompts.jsonl \
 #     --hf-sync-repo m97j/aw-runs-b6
 # Resume after an interrupted session (same command + --resume-from hub):
 #   HFCheckpointSync pushes checkpoint-N to m97j/aw-runs-b6 on every save;
@@ -20,9 +21,9 @@
 #   save_steps=50 below bounds the loss window to <=50 optimizer steps
 #   (~10% of the ~500-step B6 budget; default 200 was too coarse for GRPO).
 extends:
-  - ../base/project.yaml
-  - ../base/runtime_colab_g4.yaml
-  - ../base/model_qwen3_8b_base.yaml
+  - ../../base/project.yaml
+  - ../../base/runtime_colab_g4.yaml
+  - ../../base/model_qwen3_8b_base.yaml
 
 experiment_name: b6-playworld-grpo
 track: track_b_two_stage
@@ -64,7 +65,7 @@ training:
     # pins its own torch — so colocate (same-env) vLLM is impossible on this
     # image. Default = HF generate (use_vllm: false). The supported
     # accelerated path is SERVER mode with an isolated env (B6-B track):
-    #   bash scripts/launch_trl_vllm_server.sh Qwen/Qwen3-8B 8000
+    #   bash scripts/common/launch_trl_vllm_server.sh Qwen/Qwen3-8B 8000
     #   --override training.extra.use_vllm=true \
     #   --override training.extra.vllm_mode=server \
     #   --override training.extra.vllm_server_base_url=http://127.0.0.1:8000

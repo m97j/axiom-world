@@ -1,0 +1,22 @@
+{
+  "max_abs": 0.0002315044403076172,
+  "mean_abs": 1.0057879286915258e-05,
+  "top1_agreement": 1.0,
+  "generation_agreement": 1.0,
+  "passed": true,
+  "runtime": {
+    "device": "cuda",
+    "torch_cuda": "12.8",
+    "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "attention": "sdpa",
+    "reference": "BF16-loaded base and PEFT adapter promoted together to FP32",
+    "dtype": "float32",
+    "matmul_precision": "highest",
+    "gates": {
+      "max_abs": 0.001,
+      "mean_abs": 0.0001,
+      "top1_agreement": 0.99,
+      "generation_agreement": 0.9
+    }
+  }
+}

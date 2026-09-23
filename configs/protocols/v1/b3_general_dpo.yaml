@@ -9,11 +9,12 @@
 # from the parent via continue_training_existing_adapter; DPO updates the same
 # trainable set, keeping the learned stop-token behavior in-policy.
 # Launch (Colab):
-#   python scripts/run_experiment.py \
-#     --config configs/experiments/b3_general_dpo.yaml \
+#   python scripts/common/run_experiment.py \
+#     --config configs/protocols/v1/b3_general_dpo.yaml \
+#     --eval-freeze-manifest data/v1/eval_suites/freeze_manifest.json \
 #     --parent-adapter-dir runs/<b1v2-run>/artifacts/final_adapter \
 #     --override lineage.parent_adapter.sha256=<from lineage.json> \
-#     --override data.source.local_path=data/p1/p1_general_preference.jsonl \
+#     --override data.source.local_path=data/v1/p1/p1_general_preference.jsonl \
 #     --hf-sync-repo m97j/aw-runs-b3
 extends:
   - b1_general_sft_v2.yaml
