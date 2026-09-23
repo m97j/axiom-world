@@ -44,7 +44,7 @@ Future protocol champions need their own reviewed release policy; adding CLI
 arguments alone would not make v1 probes, module checks and metadata universal.
 
 1. Commit and push the release code and notebook from the local repository,
-   excluding uncommitted CLB development. The header pins published FP32 implementation `882c84a3a954f084757967f62af6ab722fb441ca`, so the remote runtime loads the reviewed version rather than a moving main.
+   excluding uncommitted CLB development. The header pins published FP32 implementation `1daef869d312dfc91a6d400d56e7851a421eeee8`, so the remote runtime loads the reviewed version rather than a moving main.
 2. Open the **Windows local** notebook in VS Code and select its Colab kernel.
    Run the common header. `git clone` in that cell executes on Colab and creates
    `/content/axiom-world-fp32`, not a second clone on Windows. The editable package
@@ -182,3 +182,8 @@ does not establish equivalence, and text changes alone do not prove regression.
 No acceptance margin is invented after seeing results; publication remains a
 separate reviewed decision. The evaluation does not modify verified.json or the
 release payload. Bring the report back for review before enabling the final cell.
+
+After successful FP32 prepare, run the updated header and the paired-comparison
+cell only. Do not rerun prepare/recovery on an already verified directory. The
+final publication cell now requires a completed comparison bound to the exact
+verified receipt, plus explicit review of both task results and precision drift.
