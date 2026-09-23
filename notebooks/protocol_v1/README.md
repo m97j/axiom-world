@@ -44,7 +44,7 @@ Future protocol champions need their own reviewed release policy; adding CLI
 arguments alone would not make v1 probes, module checks and metadata universal.
 
 1. Commit and push the release code and notebook from the local repository,
-   excluding uncommitted CLB development. The header pins published FP32 implementation `bf19c472b65ccd4fd5af848ce3f8ef1a8b189a46`, so the remote runtime loads the reviewed version rather than a moving main.
+   excluding uncommitted CLB development. The header pins published FP32 implementation `882c84a3a954f084757967f62af6ab722fb441ca`, so the remote runtime loads the reviewed version rather than a moving main.
 2. Open the **Windows local** notebook in VS Code and select its Colab kernel.
    Run the common header. `git clone` in that cell executes on Colab and creates
    `/content/axiom-world-fp32`, not a second clone on Windows. The editable package
@@ -149,3 +149,6 @@ code; no pre-failure hash attestation is retroactively claimed.
 The notebook selects recovery when its output directory exists; otherwise it
 selects prepare. An incomplete directory is rejected, not silently remerged.
 Preserve the current Colab runtime and files to avoid repeating the 8B merge.
+
+The header permits updating the known previous clean FP32 checkout to the pinned
+recovery implementation. It performs no reset or clean; saved runs stay in place.
