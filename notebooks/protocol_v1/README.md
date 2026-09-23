@@ -235,3 +235,24 @@ Use `runs/champion-v1-release-bf16-candidate-native-buffers` for the corrected a
 Preserve the failed directory and its standalone.json. Keep the current runtime;
 rerun the updated header, derive cell and BF16 comparison cell, not FP32 prepare.
 A failed standalone check now prints its measured differences before raising.
+
+### Completed BF16 run with a different batch size
+
+The observed BF16 audit used batch size 256, while the earlier FP32 audit used 4.
+Strict review still rejects this as a matched precision comparison. The explicit
+`--independent-controls` review mode retains both within-run comparisons, marks
+cross-precision comparability false, and never automatically recommends a dtype.
+The completed BF16 run is useful evidence of degradation against its own control;
+it is not an incomplete evaluation and need not be rerun to reject that candidate.
+
+For this release, the explicit deployment decision is to retain the independently
+verified FP32 variant, including its disclosed compositional-OOD regression.
+This decision follows the unmatched BF16 results and is not the original automatic
+matched-control rule. It does not claim FP32 superiority under matched conditions.
+`finalize_fp32_audit.py` consumes completed reports/traces with no GPU execution,
+checks receipt binding and reaggregates paired verdicts, then attaches both runs
+and their limitations to the staged model card. It preserves all model weights
+and the original receipt, and updates the payload receipt only after verification.
+Run this once, after the header, then review and enable the final publication cell.
+Do not rerun either compare cell, derive, or prepare. The failed review traceback
+should remain as execution history. Do not disconnect before saving runtime evidence.

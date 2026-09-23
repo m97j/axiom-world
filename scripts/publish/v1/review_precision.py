@@ -31,12 +31,15 @@ def load_comparison(folder):
     return report, rows
 
 
-def review(fp32_folder, bf16_folder):
+def review(fp32_folder, bf16_folder, *, independent_controls=False):
     fp, fp_rows = load_comparison(fp32_folder)
     bf, bf_rows = load_comparison(bf16_folder)
-    for key in ("legacy_code", "data_revision", "freeze", "max_new_tokens", "attention", "seed", "batch_size"):
+    for key in ("legacy_code", "data_revision", "freeze", "max_new_tokens", "attention", "seed"):
         if fp["request"][key] != bf["request"][key]:
             raise ValueError(f"Comparison conditions differ: {key}")
+    batches_match = fp["request"]["batch_size"] == bf["request"]["batch_size"]
+    if not batches_match and not independent_controls:
+        raise ValueError("Comparison conditions differ: batch_size; use --independent-controls for descriptive within-run review only")
     if bf["request"].get("candidate_dtype") != "bfloat16":
         raise ValueError("Need a BF16 task comparison")
     if bf["request"].get("source_fp32_receipt_sha256") != fp["request"]["release_receipt_sha256"]:
@@ -52,11 +55,17 @@ def review(fp32_folder, bf16_folder):
         "no_increase_in_format_errors": r["candidate_schema_failed"] <= r["reference_schema_failed"],
         "no_increase_in_truncation": r["candidate_truncated"] <= r["reference_truncated"],
     } for name, r in bf["suites"].items()}
-    bf16_preferred = same_reference and all(all(c.values()) for c in checks.values())
+    matched = same_reference and batches_match and not independent_controls
+    bf16_preferred = matched and all(all(c.values()) for c in checks.values())
     result = {"status": "completed_requires_review", "reference_repeated_exactly": same_reference,
               "suites": rows, "publication_approved": False,
+              "independent_controls": independent_controls,
+              "batch_sizes": {"fp32": fp["request"]["batch_size"], "bf16": bf["request"]["batch_size"]},
+              "cross_precision_comparison_valid": matched,
+              "fp32_source_receipt_sha256": fp["request"]["release_receipt_sha256"],
+              "interpretation": "Each variant is compared only with its own paired adapter control. Unmatched runs do not establish a precision-only effect or justify pooled controls.",
               "deployment_checks": checks,
-              "suggested_precision": ("bfloat16" if bf16_preferred else "float32") if same_reference else "review_required",
+              "suggested_precision": ("bfloat16" if bf16_preferred else "float32") if matched else "review_required",
               "decision_policy": "Conservative observed-suite non-degradation rule defined before BF16 task results; not statistical equivalence. FP32 fallback retains its disclosed compositional-OOD regression.",
               "scope": "Deployment precision audit, not new champion selection or proof of equivalence",
               "note": "Review every suite and discordant episodes; do not use historical 3-seed means as acceptance bounds"}
@@ -67,10 +76,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fp32-comparison", type=Path, required=True)
     parser.add_argument("--bf16-comparison", type=Path, required=True)
+    parser.add_argument("--independent-controls", action="store_true", help="Describe unmatched runs separately; never issue automatic precision selection")
     args = parser.parse_args()
     destination = args.bf16_comparison / "precision_review.json"
     if destination.exists():
         raise SystemExit("Review already exists; preserve existing evidence")
-    result = review(args.fp32_comparison, args.bf16_comparison)
+    result = review(args.fp32_comparison, args.bf16_comparison, independent_controls=args.independent_controls)
     write(destination, result)
     print(json.dumps(result, indent=2))

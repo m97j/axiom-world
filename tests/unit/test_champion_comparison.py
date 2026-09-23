@@ -65,3 +65,66 @@ def test_precision_review_preserves_regression_and_rejects_changed_source(monkey
     bf["request"]["source_fp32_receipt_sha256"] = "changed"
     with pytest.raises(ValueError, match="does not derive"):
         review.review("fp", "bf")
+
+def test_unmatched_batches_require_explicit_descriptive_mode(monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "compare_champion", module)
+    spec = importlib.util.spec_from_file_location("review_precision",
+        Path(__file__).resolve().parents[2] / "scripts/publish/v1/review_precision.py")
+    review = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(review)
+    a, b = [row("a", True)], [row("a", False)]
+    request = dict.fromkeys(("legacy_code", "data_revision", "freeze", "max_new_tokens", "attention", "seed"), "same")
+    fp = {"request": {**request, "batch_size": 4, "release_receipt_sha256": "bound"},
+          "suites": module.summarize_pairs(a, a)}
+    bf = {"request": {**request, "batch_size": 256, "candidate_dtype": "bfloat16", "source_fp32_receipt_sha256": "bound"},
+          "suites": module.summarize_pairs(a, b)}
+    monkeypatch.setattr(review, "load_comparison", lambda p: (fp if p == "fp" else bf,
+        {"reference": a, "candidate": a if p == "fp" else b}))
+    with pytest.raises(ValueError, match="batch_size"):
+        review.review("fp", "bf")
+    result = review.review("fp", "bf", independent_controls=True)
+    assert not result["cross_precision_comparison_valid"]
+    assert result["suggested_precision"] == "review_required"
+    assert not result["publication_approved"]
+    assert result["suites"]["eval_id"]["bf16"]["regressions"] == 1
+
+
+def test_audit_attachment_preserves_weights_and_binds_source(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    import sys
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "scripts/publish/v1"))
+    monkeypatch.setitem(sys.modules, "compare_champion", module)
+    import finalize_fp32_audit as finalizer
+
+    from axiom_world.models.champion_release import inventory
+
+    stage = tmp_path / "model"
+    stage.mkdir()
+    (stage / "README.md").write_text("original card")
+    (stage / "model.safetensors").write_bytes(b"unchanged fixture")
+    receipt = {"status": "verified", "verification": {"dtype": "float32", "merge": {"passed": True},
+        "standalone": {"passed": True}}, "files": inventory(stage)}
+    original = json.dumps(receipt).encode()
+    (tmp_path / "verified.json").write_bytes(original)
+    source_hash = hashlib.sha256(original).hexdigest()
+    summaries = module.summarize_pairs([row("a", True)], [row("a", False)])
+    fp, bf = tmp_path / "fp", tmp_path / "bf"
+    for folder in (fp, bf):
+        folder.mkdir()
+        for name in ("comparison.json", "request.json", "reference.jsonl", "candidate.jsonl",
+                     "reference_complete.json", "candidate_complete.json"):
+            (folder / name).write_text("{}")
+    monkeypatch.setattr(finalizer, "load_comparison", lambda p: ({"request": {
+        "release_receipt_sha256": source_hash, "batch_size": 4 if p == fp else 256}, "suites": summaries}, {}))
+    monkeypatch.setattr(finalizer, "review", lambda *a, **k: {"deployment_checks": {"eval_id": {"no_loss": False}}})
+    finalizer.finalize(tmp_path, fp, bf)
+    assert (stage / "model.safetensors").read_bytes() == b"unchanged fixture"
+    assert (tmp_path / "verified.before-task-audit.json").read_bytes() == original
+    updated = json.loads((tmp_path / "verified.json").read_text())
+    assert updated["files"] == inventory(stage)
+    assert updated["task_audit_source_receipt_sha256"] == source_hash
+    assert "batch sizes differed" in (stage / "README.md").read_text()
+    with pytest.raises(ValueError):
+        finalizer.finalize(tmp_path, fp, bf)
